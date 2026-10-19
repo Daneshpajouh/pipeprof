@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pipeprof.records import (
+    TaskRecord,
     _int_or_none,
     _parse_time,
     apply_snakemake_log,
@@ -215,7 +216,7 @@ def tasks_from_snakemake(benchmark_dir: Path, log_path: Path | None = None) -> l
     files = sorted(
         p for p in Path(benchmark_dir).rglob("*") if p.suffix in {".tsv", ".txt"} and p.is_file()
     )
-    records = []
+    records: list[TaskRecord] = []
     for file in files:
         records.extend(parse_snakemake_benchmark(file.read_text(encoding="utf-8"), file))
 
