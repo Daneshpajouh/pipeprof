@@ -221,6 +221,8 @@ def recommend(name: str, group: Sequence[TaskMetrics], thresholds: Thresholds) -
         )
     if timeouts:
         limits = [r.time_limit_s for r in timeouts if r.time_limit_s is not None]
+        if not limits:
+            basis.append(f"time: {len(timeouts)} timed out, limit not recorded; no recommendation")
         if limits:
             floor_s = round_up_minutes(max(limits) * 2) * 60
             time_s = max(time_s or 0, floor_s)
@@ -238,6 +240,9 @@ def recommend(name: str, group: Sequence[TaskMetrics], thresholds: Thresholds) -
         busiest = max(cpu_used)
         cpus = max(1, math.ceil(busiest - 0.15))
         basis.append(f"cpus: busiest task kept {busiest:.2f} cores busy on average")
+
+    if not basis:
+        basis.append("no completed tasks with measurements; no recommendation")
 
     def first(values: Iterable[float | int | None]) -> Any:
         known = [v for v in values if v is not None]

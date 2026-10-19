@@ -14,9 +14,10 @@ is needed.
    then flat" model chosen by the same CV, and let `--mem-cap` declare a known
    cap. Done when run A's memory error is below 1.5x with default fractions.
 3. Real Slurm end-to-end test. Run `watch --slurm-job` and
-   `report --from-slurm` against a single node Slurm container in CI and
-   replace the hand-written sacct fixtures with recorded ones for two Slurm
-   versions.
+   `report --from-slurm` inside a single node Slurm container with
+   `slurmdbd` accounting (the `filetxt` image used so far records no CPUs or
+   memory), in CI, and record sacct output from a 23.x or newer release to
+   sit beside the recorded 20.02 file.
 4. Linux run of the Snakemake example. Confirm benchmark memory columns
    fill on Linux and add that report to the case study.
 5. Index BAM subsamples when the input has a `.bai`, for tools that need

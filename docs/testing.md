@@ -17,8 +17,8 @@ on macOS and in the `python:3.13-slim` Linux container.
 Results of the last run of each:
 
 ```
-$ pytest --cov=hpc_job_profiler            # macOS, Python 3.13.9, 2026-10-19 12:09
-111 passed in 23.14s; TOTAL 2169 statements, 97% coverage (branch coverage on)
+$ pytest --cov=hpc_job_profiler            # macOS, Python 3.13.9, 2026-10-19 12:14
+112 passed in 31.18s; TOTAL 2177 statements, 97% coverage (branch coverage on)
 $ docker run --rm hjp-test                # Debian, python:3.13-slim, 2026-10-19 12:11
 111 passed in 10.58s; TOTAL 2169 statements, 97%
 $ bats tests/shell/fetch_data.bats
@@ -38,5 +38,16 @@ Linux (`HAS_IO_COUNTERS`; the stall alert falls back to CPU progress).
 
 The Slurm path is tested without a cluster. The fake `sacct` and `sstat`
 replay the hand-written fixtures and simulate one job whose memory grows on
-each `sstat` call until it completes. An end-to-end test against a real
-single node Slurm container was not done; it is on the roadmap.
+each `sstat` call until it completes.
+
+One real Slurm was also used, by hand: the `xenonmiddleware/slurm:20` image
+(`sha256:20d4481829c7859e7d2a3fb50b7296394948c2e6cad7516493c83c72dd27ff0a`,
+Slurm 20.02.0, amd64 under emulation on the Mac). The exact `sstat` and
+`sacct` calls that `hjp watch --slurm-job` makes ran without error there
+(`--allsteps` is accepted; `MaxDiskRead` came back as a bare byte count,
+`6825`). Its `sacct` output after five test jobs is in `tests/data` and showed
+that this accounting setup (`filetxt`) records 0 CPUs and 0 CPU time. Before
+that file was added, `hjp report` recommended 1 CPU from "0.00 cores busy";
+it now treats 0 allocated CPUs as not recorded. `hjp` itself was not run
+inside that container (its Python is too old), so `watch --slurm-job` has
+not been run end to end against a real `sstat` stream.

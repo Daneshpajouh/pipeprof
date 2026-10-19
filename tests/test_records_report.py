@@ -194,3 +194,23 @@ def test_report_nextflow_cpu_flag() -> None:
     report = build_report([rec])
     assert any("CPU underuse" in f for f in report.tasks[0].flags)
     assert report.recommendations[0].cpus == 1
+
+
+def test_recorded_sacct_from_slurm_20_02_container(data: Path) -> None:
+    # Real output from a single node Slurm 20.02 container with filetxt accounting:
+    # no steps, no MaxRSS, AllocCPUS 0, ReqMem 0n, empty Timelimit, array tasks
+    # listed under their raw job IDs.
+    records = by_id(parse_sacct((data / "sacct_slurm_20_02_container.txt").read_text()))
+    assert set(records) == {"2", "3", "4", "5", "6", "7", "8"}
+    assert records["6"].state == "TIMEOUT" and records["6"].elapsed_s == 81
+    assert records["4"].state == "FAILED" and records["4"].exit_code == 3
+    done = records["3"]
+    assert done.alloc_cpus is None and done.cpu_time_s is None
+    assert done.req_mem_bytes is None and done.max_rss_bytes is None
+    assert done.time_limit_s is None
+    report = build_report(list(records.values()))
+    recs = {r.name: r for r in report.recommendations}
+    assert recs["arr"].cpus is None and recs["arr"].mem_bytes is None
+    assert recs["arr"].time_s == 300
+    assert any("limit not recorded" in b for b in recs["too_long"].basis)
+    assert recs["fails"].basis == ["no completed tasks with measurements; no recommendation"]

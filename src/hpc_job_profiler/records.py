@@ -187,6 +187,13 @@ def _sacct_record(
         known_cpu = [v for v in step_cpu if v is not None]
         cpu_time = sum(known_cpu) if known_cpu else cpu_time
 
+    if cpus == 0 and state != "PENDING":
+        # filetxt accounting (seen with Slurm 20.02) stores 0 CPUs and 0 CPU time
+        # for jobs that ran; treat both as not recorded rather than as zero use.
+        cpus = None
+        cpu_time = None
+        notes.append("accounting recorded 0 allocated CPUs; CPU use unknown")
+
     submit = _parse_time(alloc.get("Submit"))
     start = _parse_time(alloc.get("Start"))
     array_job = array_task = None

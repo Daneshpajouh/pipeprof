@@ -21,5 +21,7 @@ First release.
   inputs.
 - Subsamples of indexed VCFs are indexed with tabix (ClinVar has no
   `##contig` lines).
+- sacct rows with 0 allocated CPUs (filetxt accounting) count as missing CPU
+  data, not zero use.
 - `tool_version` tolerates non UTF-8 bytes in `--version` output (samtools
   1.21 on Debian).
