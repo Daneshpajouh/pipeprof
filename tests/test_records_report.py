@@ -232,3 +232,28 @@ def test_single_task_recommendation_says_so() -> None:
     basis = build_report([rec]).recommendations[0].basis
     assert any("1 completed task (a single run" in b for b in basis)
     assert not any("1 completed tasks" in b for b in basis)
+
+
+def test_report_leaves_nextflow_cached_tasks_out() -> None:
+    # A -resume run: SORT_VCF (chr1) was cached, with the earlier run's times and a
+    # 10% CPU share that would otherwise raise a CPU underuse flag.
+    head = "task_id\tprocess\tname\tstatus\texit\tattempt\trealtime\t%cpu\tpeak_rss\tcpus\tmemory\ttime"
+    rows = [
+        "1\tSORT_VCF\tSORT_VCF (chr1)\tCACHED\t0\t1\t245000\t40.0\t1900000000\t4\t2147483648\t1800000",
+        "2\tSORT_VCF\tSORT_VCF (chr2)\tCOMPLETED\t0\t1\t250000\t390.0\t700000000\t4\t2147483648\t1800000",
+    ]
+    records = parse_nextflow_trace("\n".join([head, *rows]) + "\n")
+    assert [r.state for r in records] == ["CACHED", "COMPLETED"]
+    report = build_report(records)
+    assert report.cached_tasks == 1
+    assert report.totals.tasks == 1 and report.totals.failed == 0
+    assert [m.record.job_id for m in report.tasks] == ["2"]
+    rec = report.recommendations[0]
+    assert rec.tasks == 1
+    assert not any("CPU underuse" in f for m in report.tasks for f in m.flags)
+    line = "1 cached task(s) left out: their times are from the earlier run"
+    assert line in to_markdown(report)
+    assert line in to_html(report)
+    assert json.loads(to_json(report))["cached_tasks"] == 1
+    # No cached rows, no line.
+    assert "cached" not in to_markdown(build_report(records[1:]))

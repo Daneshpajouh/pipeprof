@@ -95,6 +95,11 @@ Recommendations per job name, Nextflow process or Snakemake rule:
 A resource gets no recommendation when none of the completed records carries
 its measurement. The report says so instead of guessing.
 
+Nextflow tasks reused with `-resume` (status `CACHED`) carry the times and
+usage of the earlier run that computed them. The report leaves them out of
+the totals, flags and recommendations and counts them on their own
+("N cached task(s) left out"), as `pipeprof analyze` does.
+
 Failure classes: OUT_OF_MEMORY, TIMEOUT, NODE_FAIL, FAILED, CANCELLED,
 PREEMPTED and BOOT_FAIL from sacct. Nextflow only reports FAILED with an exit
 status; `pipeprof` marks a failure as out of memory only for exit 137 with peak RSS

@@ -133,11 +133,14 @@ class Report:
     thresholds: Thresholds
     sources: list[str]
     run_id: str = ""
+    #: Nextflow tasks reused on -resume, left out of every finding and only counted.
+    cached_tasks: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "run_id": self.run_id,
             "sources": self.sources,
+            "cached_tasks": self.cached_tasks,
             "thresholds": asdict(self.thresholds),
             "totals": asdict(self.totals),
             "recommendations": [asdict(r) for r in self.recommendations],
@@ -304,7 +307,14 @@ def build_report(
     run_id: str = "",
 ) -> Report:
     limits = thresholds or Thresholds()
-    metrics = [task_metrics(r, limits) for r in records if r.state not in {"RUNNING", "PENDING"}]
+    # Cached tasks carry the times and usage of the earlier run that computed
+    # them; efficiency and requests describe this run, as analyze does.
+    cached = sum(1 for r in records if r.state == "CACHED")
+    metrics = [
+        task_metrics(r, limits)
+        for r in records
+        if r.state not in {"RUNNING", "PENDING", "CACHED"}
+    ]
     groups: dict[str, list[TaskMetrics]] = {}
     for m in metrics:
         groups.setdefault(m.record.name, []).append(m)
@@ -325,7 +335,14 @@ def build_report(
         if r.queue_wait_s is not None:
             totals.queue_wait_hours += r.queue_wait_s / 3600
     return Report(
-        metrics, recommendations, summarise_arrays(metrics), totals, limits, list(sources), run_id
+        metrics,
+        recommendations,
+        summarise_arrays(metrics),
+        totals,
+        limits,
+        list(sources),
+        run_id,
+        cached,
     )
 
 
@@ -413,6 +430,15 @@ def _failure_lines(report: Report) -> list[str]:
     ]
 
 
+def _cached_lines(report: Report) -> list[str]:
+    if not report.cached_tasks:
+        return []
+    return [
+        f"{report.cached_tasks} cached task(s) left out: their times are from the "
+        "earlier run that computed them."
+    ]
+
+
 def to_markdown(report: Report) -> str:
     t = report.totals
     rec_head, rec_rows, task_head, task_rows = _rows(report)
@@ -423,6 +449,7 @@ def to_markdown(report: Report) -> str:
         f"Run ID: {report.run_id or 'n/a'}",
         "",
         f"Tasks: {t.tasks}, not completed: {t.failed}.",
+        *_cached_lines(report),
         f"Core hours allocated {t.core_hours_allocated:.3f}, used {t.core_hours_used:.3f}.",
         f"Memory GiB hours requested {t.gib_hours_requested:.3f}, used {t.gib_hours_used:.3f}.",
         f"Queue wait {t.queue_wait_hours:.3f} hours in total.",
@@ -485,7 +512,9 @@ def to_html(report: Report) -> str:
         f"<title>Job efficiency report</title><style>{style}</style></head><body>"
         "<h1>Job efficiency report</h1>"
         f"<p>Sources: {html.escape(', '.join(report.sources) or 'n/a')}</p>"
-        f"<p>Tasks {t.tasks}, not completed {t.failed}. Core hours allocated "
+        f"<p>Tasks {t.tasks}, not completed {t.failed}. "
+        + "".join(html.escape(line) + " " for line in _cached_lines(report))
+        + "Core hours allocated "
         f"{t.core_hours_allocated:.3f}, used {t.core_hours_used:.3f}. Memory GiB hours "
         f"requested {t.gib_hours_requested:.3f}, used {t.gib_hours_used:.3f}.</p>"
         f"<h2>Recommendations</h2>{table(rec_head, rec_rows)}<ul>{basis}</ul>"

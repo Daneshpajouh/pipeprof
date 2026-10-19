@@ -278,7 +278,9 @@ def parse_nextflow_trace(text: str) -> list[TaskRecord]:
 
 
 def _nextflow_state(status: str) -> str:
-    return {"COMPLETED": "COMPLETED", "CACHED": "COMPLETED", "FAILED": "FAILED"}.get(
+    # CACHED stays CACHED: on -resume the row carries the earlier run's times
+    # and usage, so the report leaves it out instead of counting it as this run's.
+    return {"COMPLETED": "COMPLETED", "CACHED": "CACHED", "FAILED": "FAILED"}.get(
         status, status or "UNKNOWN"
     )
 

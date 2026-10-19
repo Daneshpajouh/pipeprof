@@ -100,6 +100,11 @@ Versions follow [Semantic Versioning](https://semver.org/).
   time, efficiency, labels and advice, and counted on their own ("N cached
   task(s) left out"). A day-old cached task had stretched the critical path
   to 86,430 s for a 30 s run.
+- `pipeprof report` on a Nextflow `-resume` trace: CACHED tasks were counted
+  as completed, so an earlier run's usage set this run's flags and requests.
+  They are now left out of the totals, flags and recommendations and counted
+  on their own, as in `pipeprof analyze`; `report.json` carries
+  `cached_tasks`.
 - `parse_speedscope` reads every profile of a multi-thread py-spy file, so
   `top_functions` ranks over all threads; `profile_index` reads one. It used
   to read only the profile the viewer opens first.
