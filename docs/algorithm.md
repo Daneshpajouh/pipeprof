@@ -215,13 +215,13 @@ default).
 
 | Constant | Value | Reason |
 |---|---|---|
-| `CPU_BOUND_THRESHOLD` | 80% | Nextflow and Snakemake report CPU as a percent of one core; dividing by CPUs requested gives the share of the request used. 80% leaves headroom for sampling noise around a tool genuinely keeping its cores busy. |
-| `CPU_WAIT_THRESHOLD` | 30% | Under three tenths of one requested core busy, CPU use alone does not explain the time; something else (another task, a lock, the scheduler) does. |
+| `CPU_BOUND_THRESHOLD` | 80% | Nextflow and Snakemake report CPU as a percent of one core; divided by 100 that is cores kept busy. A step is CPU-bound when it keeps 80% of its requested cores busy, or at least 0.8 of one core whatever it requested: its time goes on computing, on as many cores as the tool uses. 80% leaves headroom for sampling noise. |
+| `CPU_WAIT_THRESHOLD` | 30% | Under 0.3 of ONE core busy (not of the request), computing does not explain the time; something else (another task, a lock, a slow filesystem, the scheduler) does. `pipeprof calibrate` uses the same constant and the same one-core reading, so both commands call the same runs mostly waiting. A single-threaded tool given 4 CPUs at 100% of one core is CPU-bound on one core, not waiting. |
 | `IO_BOUND_BYTES_PER_S` | 20 MiB/s | A shared HPC filesystem (NFS, a parallel filesystem under load from many concurrent jobs) struggles to sustain much more than this per stream. A step under the CPU-bound threshold moving data at or above this rate is I/O-bound: its time goes on moving data. A step at low CPU moving less is not I/O-bound; it is waiting on something else (often a slow or shared filesystem's latency, a lock or the queue) and is labelled by its CPU use. |
 | `MEM_BOUND_FRACTION` | 80% | Peak RSS within this share of the request means the step is sized by what it was given; a slightly larger input next time risks an out-of-memory kill. |
 
-Labels are checked in order: memory-bound, then CPU-bound, then I/O-bound,
-then mostly waiting, then unknown. A step with none of CPU, I/O or memory
+Labels are checked in order: memory-bound, then CPU-bound (share of the
+request, then one core), then I/O-bound, then mostly waiting, then unknown. A step with none of CPU, I/O or memory
 measurements is "unknown" and says so, rather than guessing from whichever
 numbers happen to be present.
 
@@ -238,7 +238,9 @@ other source of those two points): a speed-up under `THREAD_SCALING_THRESHOLD`
 (1.2x) is flagged as not worth doubling the cores, since the extra cores
 could go to another job on a shared cluster. An I/O-bound or mostly-waiting
 step gets the same advice without needing thread calibration, since more
-compute capacity cannot shorten time spent moving data or waiting. Memory
+compute capacity cannot shorten time spent moving data or waiting. So does a
+CPU-bound step that keeps under 80% of its requested cores busy (a
+single-threaded tool given four CPUs): it already has cores it does not use. Memory
 requests are flagged too large when a completed task's peak RSS is under
 `REQUEST_TOO_LARGE_FRACTION` (50%, the same threshold `report.py` already
 uses) of the request, and too small when a failed task's peak RSS was within

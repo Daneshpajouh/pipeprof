@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from pipeprof.bottleneck import CriticalPath
-from pipeprof.bound import BoundLabel
+from pipeprof.bound import CPU_BOUND_THRESHOLD, BoundLabel
 from pipeprof.timeline import Task
 
 # Below this, doubling the threads is not worth it: going from 2 to 4 threads
@@ -132,7 +132,27 @@ def thread_scaling_advice(
 
 
 def bound_thread_advice(label: BoundLabel) -> ThreadAdvice | None:
-    """A step that is I/O-bound or mostly waiting will not go faster with more threads."""
+    """A step that will not go faster with more threads.
+
+    I/O-bound and mostly-waiting steps are not limited by compute. A CPU-bound
+    step that keeps well under its requested cores busy (a single-threaded
+    tool given four CPUs) already has cores it does not use.
+    """
+    if (
+        label.label == "cpu-bound"
+        and label.cores_busy is not None
+        and label.cpus_requested
+        and label.cores_busy / label.cpus_requested < CPU_BOUND_THRESHOLD
+    ):
+        return ThreadAdvice(
+            step=label.step,
+            from_threads=0,
+            to_threads=0,
+            speedup=1.0,
+            basis=f"{label.step} keeps {label.cores_busy:.1f} of {label.cpus_requested:g} "
+            "requested cores busy; more threads will not help, because it uses about "
+            f"{max(1, round(label.cores_busy))}",
+        )
     if label.label not in {"io-bound", "mostly waiting"}:
         return None
     return ThreadAdvice(

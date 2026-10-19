@@ -88,3 +88,41 @@ def test_io_threshold_both_sides() -> None:
     label = label_step("step", [below])
     assert label.label == "mostly waiting"
     assert any("not spent moving data" in e for e in label.evidence)
+
+
+def test_waiting_is_a_share_of_one_core() -> None:
+    from pipeprof.advise import bound_thread_advice
+
+    # A single-threaded tool given 4 CPUs, keeping its one core fully busy:
+    # 25% of the request, but not waiting. It is CPU-bound on one core, and
+    # more threads will not help because it uses one.
+    single = task(cpu_percent=100.0, cpus=4)
+    label = label_step("step", [single])
+    assert label.label == "cpu-bound"
+    assert any("1.00 cores busy" in e for e in label.evidence)
+    advice = bound_thread_advice(label)
+    assert advice is not None and "more threads will not help" in advice.basis
+    assert "1.0 of 4" in advice.basis
+
+    # Under 0.3 of one core busy is waiting whatever the request.
+    assert label_step("step", [task(cpu_percent=20.0, cpus=4)]).label == "mostly waiting"
+    assert label_step("step", [task(cpu_percent=20.0, cpus=1)]).label == "mostly waiting"
+    # A tool using all four cores it asked for is CPU-bound, and gets no thread advice.
+    full = label_step("step", [task(cpu_percent=390.0, cpus=4)])
+    assert full.label == "cpu-bound"
+    assert bound_thread_advice(full) is None
+
+
+def test_waiting_matches_calibrate() -> None:
+    from pipeprof.calibrate import RunPoint, waiting_runs
+    from pipeprof.measure import Measurement
+
+    # The same run read by both commands: 10 s wall, 2.5 s CPU, 4 threads given.
+    m = Measurement("x", 0, 10.0, 2.5, 0.0, 1, 1, 1, None, None, 0, 0, 1, 0.05)
+    run = RunPoint(0.1, 1, "p", 1, 1, m)
+    assert waiting_runs([run]) == [run]
+    as_task = task(cpu_percent=25.0, cpus=4)
+    assert label_step("step", [as_task]).label == "mostly waiting"
+    m_busy = Measurement("x", 0, 10.0, 4.0, 0.0, 1, 1, 1, None, None, 0, 0, 1, 0.05)
+    assert waiting_runs([RunPoint(0.1, 1, "p", 1, 1, m_busy)]) == []
+    assert label_step("step", [task(cpu_percent=40.0, cpus=4)]).label != "mostly waiting"

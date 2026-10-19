@@ -133,12 +133,14 @@ tasks (`pipeprof.timeline`), then:
 - **Retries**: tasks that needed more than one attempt, and the wall time
   their failed attempts cost.
 - **Boundness**: each step labelled `cpu-bound`, `io-bound`, `memory-bound`,
-  `mostly waiting` or `unknown`, from CPU use against CPUs requested, I/O
-  rate, and peak RSS against the request; see
+  `mostly waiting` or `unknown`, from cores kept busy (mostly waiting is
+  under 0.3 of one core, as in `pipeprof calibrate`) and their share of the
+  CPUs requested, I/O rate, and peak RSS against the request; see
   [algorithm.md](algorithm.md#boundness-thresholds) for the thresholds.
 - **Recommendations**: which critical-path step to speed up first and the
   expected wall-time saving; where more threads will not help (an I/O-bound
-  or mostly-waiting step, or a measured 2 to 4 thread speed-up under 1.2x);
+  or mostly-waiting step, a CPU-bound step using well under its requested
+  cores, or a measured 2 to 4 thread speed-up under 1.2x);
   and memory requests that are too large (peak RSS under half the request)
   or too small (a failed task's peak RSS within 5% of the limit).
 
