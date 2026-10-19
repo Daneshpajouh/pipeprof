@@ -10,6 +10,9 @@ pipeprof --version
 `calibrate` on BAM or CRAM needs `samtools` on `PATH`; indexed VCF input
 uses `tabix` to index the subsamples (see below).
 
+On an Alliance cluster, see [clusters.md](clusters.md): dependencies from
+the wheelhouse, psutil below 7.2, no `/usr/bin/time` needed.
+
 ## Before: `pipeprof calibrate`
 
 ```bash

@@ -72,6 +72,10 @@ fits: the ClinVar runs in [docs/results.md](docs/results.md) (200 MB VCF,
 download commands in `scripts/fetch_data.sh`) predicted time within 4 percent,
 and that page also shows the cases where memory or time was off and why.
 
+On Alliance clusters, install the dependencies from the cluster wheelhouse
+with psutil below 7.2, then the `pipeprof` wheel:
+[docs/clusters.md](docs/clusters.md).
+
 ## What it reads and writes
 
 | Command | Reads | Writes |

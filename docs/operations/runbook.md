@@ -58,6 +58,13 @@ For each case: how it shows up, how `pipeprof` reports it, what to do.
 - Action: apply the recommendation table; for job arrays, read the
   min/median/max line and size for the maximum, not the median.
 
+## pipeprof itself aborts at exit on a cluster
+
+- The Python process aborts as it exits, after the measurement finished,
+  with `psutil 7.2.2+computecanada` from the Alliance wheelhouse.
+- Action: `pip install --no-index "psutil<7.2"` in the environment;
+  7.0.0 is clean. See [clusters.md](../clusters.md).
+
 ## Escalation
 
 Collect: job IDs, `sacct --parsable2` output from `pipeprof report --show-sacct`,

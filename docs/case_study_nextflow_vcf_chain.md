@@ -82,6 +82,13 @@ critical path, one CPU-bound task with three CPUs idle. That is the next
 thing to try (`bcftools concat --threads`), and it is not part of this
 study.
 
+## On a cluster
+
+A run on Narval on 2026-10-19 [CONFIRM job ID] checked the measurement
+itself: `pipeprof watch` added 0.29 s to a 4.3 s job, and its peak RSS agreed
+with the kernel's rusage peak within 0.3 percent. Install notes for the
+cluster are in [clusters.md](clusters.md).
+
 ## Limits
 
 - Five earlier before runs at a higher load (load average 36 to 53) took
