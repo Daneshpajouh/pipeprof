@@ -80,6 +80,7 @@ and that page also shows the cases where memory or time was off and why.
 | `pipeprof watch` | a local PID, a command to start, or a Slurm job ID (`sstat`) | JSON lines: samples and alerts |
 | `pipeprof tail` | a watch log | live terminal view |
 | `pipeprof report` | `sacct --parsable2` output (Slurm 20.11 and 21.08+ formats), Nextflow trace files (default and raw), Snakemake benchmark files and run log | `report.md`, `report.html`, `report.json` |
+| `pipeprof analyze` | a Nextflow trace, Snakemake benchmark files and run log, or a plain name/start/end TSV | `analysis.md`, `analysis.json`: critical path, step shares, parallel efficiency, boundness, recommendations |
 | `pipeprof provenance` | files to hash | JSON: host, tool versions, git commit, SHA-256 |
 
 The logging library is importable on its own:
