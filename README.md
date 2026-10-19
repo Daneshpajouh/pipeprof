@@ -74,7 +74,7 @@ Time was predicted within 4 percent. Memory was over-predicted 3.7 times:
 subsample (20 percent) never reached that cap, so the straight line kept going.
 Calibrating with larger subsamples (5 to 50 percent) brought the error to
 2.0 times. [docs/results.md](docs/results.md) has all four held-out runs,
-including two where time was under-predicted, and what the tool does about it.
+including two where time was under-predicted, and how to choose fractions when a tool has a memory cap.
 
 ## What it reads and writes
 
