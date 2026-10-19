@@ -90,3 +90,33 @@ def test_analyze_empty_tsv_is_rejected(tmp_path: Path) -> None:
     tsv.write_text("name\tstart\tend\n")
     result = runner.invoke(app, ["analyze", "--tsv", str(tsv), "--outdir", str(tmp_path / "an")])
     assert result.exit_code == 2
+
+
+def _assert_missing_reported(args: list[str], missing: Path) -> None:
+    result = runner.invoke(app, args)
+    assert result.exit_code == 2, result.output
+    assert not isinstance(result.exception, FileNotFoundError)
+    assert result.stderr.strip() == f"pipeprof: input not found: {missing}"
+
+
+def test_report_names_each_missing_input(data: Path, tmp_path: Path) -> None:
+    missing = tmp_path / "no_such_file.jsonl"
+    out = ["--outdir", str(tmp_path / "rep")]
+    for option in ("--sacct", "--nextflow-trace", "--snakemake-benchmarks", "--watch-log"):
+        _assert_missing_reported(["report", option, str(missing), *out], missing)
+    bench = data / "snakemake_macos_run" / "benchmarks"
+    args = ["report", "--snakemake-benchmarks", str(bench), "--snakemake-log", str(missing)]
+    _assert_missing_reported([*args, *out], missing)
+
+
+def test_analyze_names_each_missing_input(data: Path, tmp_path: Path) -> None:
+    missing = tmp_path / "no_such_file.txt"
+    out = ["--outdir", str(tmp_path / "an")]
+    for option in ("--nextflow-trace", "--snakemake-benchmarks", "--tsv"):
+        _assert_missing_reported(["analyze", option, str(missing), *out], missing)
+    bench = data / "snakemake_macos_run" / "benchmarks"
+    args = ["analyze", "--snakemake-benchmarks", str(bench), "--snakemake-log", str(missing)]
+    _assert_missing_reported([*args, *out], missing)
+    trace = data / "nextflow_trace_raw.txt"
+    args = ["analyze", "--nextflow-trace", str(trace), "--usage", str(missing)]
+    _assert_missing_reported([*args, *out], missing)

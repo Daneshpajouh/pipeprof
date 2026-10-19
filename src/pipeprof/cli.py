@@ -57,6 +57,18 @@ def _version(value: bool) -> None:
         raise typer.Exit()
 
 
+def _require_inputs(paths: list[Path | None]) -> None:
+    """Exit 2 with one line naming the first input path that does not exist.
+
+    Checked before any work so a typo costs one clear line, not a traceback
+    from deep inside a parser.
+    """
+    for path in paths:
+        if path is not None and not path.exists():
+            typer.echo(f"pipeprof: input not found: {path}", err=True)
+            raise typer.Exit(2)
+
+
 @app.callback()
 def main_callback(
     version: Annotated[
@@ -259,6 +271,7 @@ def report_cmd(
         typer.echo(" ".join(sacct_command(start="YYYY-MM-DD")))
         raise typer.Exit()
     all_files = [*sacct, *nextflow_trace, *snakemake_benchmarks, *snakemake_log, *watch_log]
+    _require_inputs(list(all_files))
     sources = [str(p) for p in all_files]
     sacct_files = list(sacct)
     if from_slurm:
@@ -423,6 +436,7 @@ def analyze_cmd(
             "[red]give exactly one of --nextflow-trace, --snakemake-benchmarks or --tsv[/red]"
         )
         raise typer.Exit(2)
+    _require_inputs([nextflow_trace, snakemake_benchmarks, snakemake_log, tsv, *usage])
 
     usage_map = load_usage(usage) if usage else {}
     tasks: list[Task]
