@@ -217,7 +217,7 @@ default).
 |---|---|---|
 | `CPU_BOUND_THRESHOLD` | 80% | Nextflow and Snakemake report CPU as a percent of one core; dividing by CPUs requested gives the share of the request used. 80% leaves headroom for sampling noise around a tool genuinely keeping its cores busy. |
 | `CPU_WAIT_THRESHOLD` | 30% | Under three tenths of one requested core busy, CPU use alone does not explain the time; something else (another task, a lock, the scheduler) does. |
-| `IO_BOUND_BYTES_PER_S` | 20 MiB/s | A shared HPC filesystem (NFS, a parallel filesystem under load from many concurrent jobs) struggles to sustain much more than this per stream; a step moving less while barely using its CPU is still read as I/O-bound rather than idle. |
+| `IO_BOUND_BYTES_PER_S` | 20 MiB/s | A shared HPC filesystem (NFS, a parallel filesystem under load from many concurrent jobs) struggles to sustain much more than this per stream. A step under the CPU-bound threshold moving data at or above this rate is I/O-bound: its time goes on moving data. A step at low CPU moving less is not I/O-bound; it is waiting on something else (often a slow or shared filesystem's latency, a lock or the queue) and is labelled by its CPU use. |
 | `MEM_BOUND_FRACTION` | 80% | Peak RSS within this share of the request means the step is sized by what it was given; a slightly larger input next time risks an out-of-memory kill. |
 
 Labels are checked in order: memory-bound, then CPU-bound, then I/O-bound,

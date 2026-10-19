@@ -76,3 +76,15 @@ def test_unknown_in_the_middle_band() -> None:
 def test_label_steps_sorts_by_name() -> None:
     labels = label_steps({"b": [task()], "a": [task()]})
     assert [l.step for l in labels] == ["a", "b"]
+
+
+def test_io_threshold_both_sides() -> None:
+    # Low CPU and a high data rate: the step is limited by moving data.
+    above = task(cpu_percent=10.0, start=0.0, end=1.0, read_bytes=IO_BOUND_BYTES_PER_S + 1)
+    assert label_step("step", [above]).label == "io-bound"
+    # Low CPU and little data moved: not I/O-bound; it is waiting on something
+    # else (a slow or shared filesystem, a lock, the queue).
+    below = task(cpu_percent=10.0, start=0.0, end=1.0, read_bytes=IO_BOUND_BYTES_PER_S - 1)
+    label = label_step("step", [below])
+    assert label.label == "mostly waiting"
+    assert any("not spent moving data" in e for e in label.evidence)

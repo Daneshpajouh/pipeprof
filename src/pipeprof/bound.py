@@ -23,11 +23,12 @@ CPU_BOUND_THRESHOLD = 0.8
 # task, a lock, a scheduler) rather than computing or moving data.
 CPU_WAIT_THRESHOLD = 0.3
 
-# A single sequential stream below this on a shared HPC filesystem is the
-# filesystem, not the tool: NFS and parallel filesystems common on clusters
-# struggle to sustain much more than this for many small, concurrent jobs,
-# so a step moving less than this while barely using its CPU is read as
-# I/O-bound rather than idle.
+# NFS and parallel filesystems common on clusters struggle to sustain much
+# more than this per stream for many small, concurrent jobs. A step at low
+# CPU moving data at or above this rate is limited by I/O: its time goes on
+# moving data. A step at low CPU moving less is not I/O-bound; it is waiting
+# on something else (often a slow or shared filesystem's latency, a lock or
+# the queue), and is labelled by its CPU use alone.
 IO_BOUND_BYTES_PER_S = 20 * 1024 * 1024
 
 # Peak RSS within this share of the request is read as memory-bound: the
@@ -105,11 +106,13 @@ def label_step(name: str, tasks: Sequence[Task]) -> BoundLabel:
             [*evidence, f"crossed {IO_BOUND_BYTES_PER_S / (1024 * 1024):.0f} MiB/s I/O threshold"],
         )
     if avg_cpu is not None and avg_cpu < CPU_WAIT_THRESHOLD:
-        return BoundLabel(
-            name,
-            "mostly waiting",
-            [*evidence, f"under the {CPU_WAIT_THRESHOLD:.0%} CPU threshold for waiting"],
-        )
+        why = [f"under the {CPU_WAIT_THRESHOLD:.0%} CPU threshold for waiting"]
+        if avg_io is not None:
+            why.append(
+                f"under {IO_BOUND_BYTES_PER_S / (1024 * 1024):.0f} MiB/s, so the time is not "
+                "spent moving data"
+            )
+        return BoundLabel(name, "mostly waiting", [*evidence, *why])
     return BoundLabel(name, "unknown", [*evidence, "no threshold crossed"])
 
 
