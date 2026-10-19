@@ -28,7 +28,13 @@ from pipeprof.emit import (
     snakemake_profile,
     snakemake_rule,
 )
-from pipeprof.fit import Selection, predict_with_plateau, scale_fit, select_model
+from pipeprof.fit import (
+    Selection,
+    constant_fit,
+    predict_with_plateau,
+    scale_fit,
+    select_model,
+)
 from pipeprof.logkit import RunLogger
 from pipeprof.measure import Measurement, run_measured
 from pipeprof.provenance import capture
@@ -276,19 +282,60 @@ def _wall_from_cpu(
     1,146 s on a cluster). CPU time does scale with input. The point and
     upper bound assume the full run waits as much as the worst measured run;
     the lower bound assumes it waits as little as the best one.
+
+    A run with no CPU time at all (a pure wait, such as a stalled mount) has
+    a cores-busy ratio of zero, and dividing by it has no meaning. Such runs
+    are left out of the ratios; the estimate is at least their longest wall,
+    since the full run can stall as long. If every run is a pure wait there
+    is no CPU model to scale and the estimate is the observed wall range.
     """
-    ratios = [cores_busy(p) for p in points if p.measurement.wall_s > 0]
-    worst = max(min(ratios), 1e-6)
-    best = max(ratios)
+    timed = [p for p in points if p.measurement.wall_s > 0]
     walls = [p.measurement.wall_s for p in points]
-    slowest = min(waiting, key=cores_busy).measurement
+    pure = [p for p in timed if p.measurement.cpu_s <= 0]
+    busy = [p for p in timed if p.measurement.cpu_s > 0]
     note = (
         f"mostly waiting: {len(waiting)} of {len(points)} runs kept under "
-        f"{CPU_WAIT_THRESHOLD:.0%} of one core busy (lowest {worst:.3f}: "
-        f"wall {slowest.wall_s:.2f} s on {slowest.cpu_s:.2f} s CPU), so wall time is not "
-        f"fitted; observed wall {min(walls):.2f} to {max(walls):.2f} s; time is the CPU "
-        f"model divided by the lowest cores-busy ratio"
+        f"{CPU_WAIT_THRESHOLD:.0%} of one core busy, so wall time is not fitted; "
+        f"observed wall {min(walls):.2f} to {max(walls):.2f} s"
     )
+    if pure:
+        pure_walls = [p.measurement.wall_s for p in pure]
+        note += (
+            f"; {len(pure)} run(s) used no CPU at all (pure waits, wall "
+            f"{min(pure_walls):.2f} to {max(pure_walls):.2f} s), left out of the "
+            f"cores-busy ratio"
+        )
+    if not busy:
+        longest = max(walls)
+        fit = constant_fit(walls)
+        selection = Selection(
+            fit, {fit.kind: fit}, {}, {}, "mostly waiting: no run used CPU, observed wall range"
+        )
+        note += "; no CPU model to scale, so the estimate is the observed wall range"
+        return Prediction(
+            "wall_s",
+            longest,
+            min(walls),
+            longest,
+            cpu.level,
+            selection,
+            basis="mostly waiting",
+            note=note,
+            observed_range=(min(walls), max(walls)),
+        )
+    ratios = [cores_busy(p) for p in busy]
+    worst, best = min(ratios), max(ratios)
+    slowest = min(busy, key=cores_busy).measurement
+    note += (
+        f"; time is the CPU model divided by the lowest cores-busy ratio ({worst:.3f}: "
+        f"wall {slowest.wall_s:.2f} s on {slowest.cpu_s:.2f} s CPU)"
+    )
+    point, upper = cpu.point / worst, cpu.upper / worst
+    if pure:
+        stall = max(p.measurement.wall_s for p in pure)
+        if stall > point:
+            note += f"; raised to the longest pure wait {stall:.2f} s"
+        point, upper = max(point, stall), max(upper, stall)
     # The wall model is the CPU model scaled by 1 / worst, so the Snakemake and
     # Nextflow runtime formulas built from it give wall minutes, as the fixed
     # sbatch time does; reusing the CPU selection would emit CPU minutes.
@@ -304,9 +351,9 @@ def _wall_from_cpu(
     )
     return Prediction(
         "wall_s",
-        cpu.point / worst,
-        cpu.lower / best,
-        cpu.upper / worst,
+        point,
+        min(cpu.lower / best, point),
+        upper,
         cpu.level,
         selection,
         basis="mostly waiting",

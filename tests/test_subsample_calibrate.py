@@ -398,3 +398,34 @@ def test_emitted_memory_covers_widened_bound(
     plan = result.plan
     assert mem_mb * 10**6 >= plan.predicted_peak_rss_upper_bytes * plan.mem_headroom
 
+
+
+def test_zero_cpu_runs_give_wall_from_observed_range(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pipeprof.calibrate import predict_metrics
+
+    # One pure wait (sleep on a stalled mount): 30 s wall, no CPU at all.
+    runs = [
+        _run(0.05, 2.0, 1.7, 60e6),
+        _run(0.1, 30.0, 0.0, 60e6),
+        _run(0.2, 8.1, 6.8, 120e6),
+    ]
+    preds = predict_metrics(runs, 1e9, "bytes")
+    wall = preds["wall_s"]
+    assert wall.basis == "mostly waiting"
+    assert math.isfinite(wall.point) and math.isfinite(wall.upper)
+    # Never a million-fold inflation: the bound stays near what the CPU model
+    # and the observed walls allow.
+    assert wall.upper < 1000 * 30.0
+    assert wall.upper >= 30.0
+    assert "no CPU" in wall.note
+
+    # Every run a pure wait: no CPU model to scale, so the observed range is the estimate.
+    waits = [_run(f, w, 0.0, 60e6) for f, w in [(0.05, 3.0), (0.1, 9.0), (0.2, 5.0)]]
+    preds = predict_metrics(waits, 1e9, "bytes")
+    wall = preds["wall_s"]
+    assert (wall.lower, wall.upper) == (3.0, 9.0)
+    assert wall.point == 9.0
+    assert "no CPU" in wall.note
+
