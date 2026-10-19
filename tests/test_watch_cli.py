@@ -41,7 +41,9 @@ def test_alert_engine_rules() -> None:
 
 
 def test_watch_pid_writes_samples(tmp_path: Path) -> None:
-    proc = subprocess.Popen([PY, "-c", "import time; x = bytearray(30_000_000); time.sleep(1)"])
+    # 3 s of life so a sampler slowed by a loaded machine still takes 3 samples; with
+    # 1 s it took only 2 at a load average near 50.
+    proc = subprocess.Popen([PY, "-c", "import time; x = bytearray(30_000_000); time.sleep(3)"])
     out = tmp_path / "w.jsonl"
     with out.open("w") as handle:
         n = watch_pid(proc.pid, JsonlSink(handle), AlertConfig(mem_limit_bytes=10), 0.1)
