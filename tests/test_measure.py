@@ -63,3 +63,41 @@ def test_sampler_returns_none_after_exit() -> None:
 def test_maxrss_units() -> None:
     assert maxrss_to_bytes(10, "darwin") == 10
     assert maxrss_to_bytes(10, "linux") == 10240
+
+
+def test_getrusage_fallback_without_wait4(monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+
+    from pipeprof import measure
+
+    # As on a host whose Python has no os.wait4: the getrusage path must do the work.
+    monkeypatch.delattr(os, "wait4")
+    monkeypatch.setattr(measure, "HAS_WAIT4", False)
+    busy = "sum(i * i for i in range(3_000_000))"
+    m = run_measured([PY, "-c", f"{busy}; {ALLOC}"], interval=0.02)
+    assert m.returncode == 0
+    assert m.cpu_s > 0.05
+    assert m.wall_s >= 0.4
+    assert m.peak_rss_bytes >= 100 * 1024 * 1024
+    assert run_measured([PY, "-c", "import sys; sys.exit(3)"]).returncode == 3
+
+
+def test_getrusage_maxrss_counts_only_when_it_rose(monkeypatch: pytest.MonkeyPatch) -> None:
+    import resource
+
+    from pipeprof import measure
+
+    def rusage(utime: float, maxrss: int) -> resource.struct_rusage:
+        return resource.struct_rusage((utime, 0.5, maxrss, *([0] * 13)))
+
+    class Done:
+        def wait(self) -> int:
+            return 0
+
+    before = rusage(1.0, 500)
+    monkeypatch.setattr(resource, "getrusage", lambda who: rusage(3.5, 500))
+    code, usage = measure._wait_getrusage(Done(), before)  # type: ignore[arg-type]
+    assert code == 0 and usage.utime == 2.5 and usage.stime == 0.0
+    assert usage.maxrss == 0  # an earlier child set that peak, not this command
+    monkeypatch.setattr(resource, "getrusage", lambda who: rusage(3.5, 900))
+    assert measure._wait_getrusage(Done(), before)[1].maxrss == 900  # type: ignore[arg-type]

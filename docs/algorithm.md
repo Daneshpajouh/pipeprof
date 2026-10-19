@@ -10,7 +10,8 @@ and records:
 
 - wall time, from a monotonic clock around the process;
 - CPU time, user plus system, from `os.wait4`, which includes every
-  descendant the command waited for;
+  descendant the command waited for (where `os.wait4` is missing, from the
+  change in `resource.getrusage(RUSAGE_CHILDREN)` across the wait);
 - peak memory, the larger of `ru_maxrss` (largest single process, from the
   kernel) and the largest sum of RSS over the process tree seen by a psutil
   sampling thread. A pipe such as `samtools view | samtools sort` holds memory

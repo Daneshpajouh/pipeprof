@@ -10,6 +10,10 @@ Two sources are combined:
   This catches pipelines where several processes hold memory at once, which
   ``ru_maxrss`` cannot see.
 
+Where ``os.wait4`` is missing, ``resource.getrusage(RUSAGE_CHILDREN)`` read
+before and after the wait gives the same counters as a difference. Neither
+path runs ``/usr/bin/time``, which many compute nodes do not have.
+
 The reported peak is the larger of the two. Sampling can miss a spike shorter
 than the interval, so the sampled value is a lower bound; the docs explain how
 to choose the interval.
@@ -18,6 +22,7 @@ to choose the interval.
 from __future__ import annotations
 
 import os
+import resource
 import shlex
 import subprocess
 import sys
@@ -29,6 +34,9 @@ from pathlib import Path
 from typing import IO, Any
 
 import psutil
+
+#: ``os.wait4`` gives the rusage of exactly one child; without it, getrusage differences.
+HAS_WAIT4 = hasattr(os, "wait4")
 
 #: psutil exposes per process I/O counters on Linux and Windows, not on macOS.
 HAS_IO_COUNTERS = hasattr(psutil.Process, "io_counters")
@@ -151,6 +159,46 @@ def maxrss_to_bytes(value: int, platform: str = sys.platform) -> int:
     return int(value) if platform == "darwin" else int(value) * 1024
 
 
+@dataclass(frozen=True)
+class ChildUsage:
+    """The rusage fields a measurement uses, ``maxrss`` as the kernel reports it."""
+
+    utime: float
+    stime: float
+    maxrss: int
+    inblock: int
+    oublock: int
+
+
+def _wait4(proc: subprocess.Popen[bytes]) -> tuple[int, ChildUsage]:
+    _, status, ru = os.wait4(proc.pid, 0)
+    usage = ChildUsage(ru.ru_utime, ru.ru_stime, ru.ru_maxrss, ru.ru_inblock, ru.ru_oublock)
+    return os.waitstatus_to_exitcode(status), usage
+
+
+def _wait_getrusage(
+    proc: subprocess.Popen[bytes], before: resource.struct_rusage
+) -> tuple[int, ChildUsage]:
+    """Wait, then take the children's rusage as the change since ``before``.
+
+    Times and block counts add up over every child this process has waited
+    for, so the difference is this command's share, provided no other child
+    finishes in the meantime (calibrate runs one at a time). ``ru_maxrss`` is
+    a maximum, not a sum: it belongs to this command only if it rose, and is
+    otherwise reported as 0 so the sampled tree peak decides.
+    """
+    returncode = proc.wait()
+    after = resource.getrusage(resource.RUSAGE_CHILDREN)
+    usage = ChildUsage(
+        utime=after.ru_utime - before.ru_utime,
+        stime=after.ru_stime - before.ru_stime,
+        maxrss=after.ru_maxrss if after.ru_maxrss > before.ru_maxrss else 0,
+        inblock=after.ru_inblock - before.ru_inblock,
+        oublock=after.ru_oublock - before.ru_oublock,
+    )
+    return returncode, usage
+
+
 class CommandFailedError(RuntimeError):
     """Raised when a measured command exits with a non-zero status and ``check`` is set."""
 
@@ -173,13 +221,17 @@ def run_measured(
     keep_timeline: bool = False,
     on_sample: Callable[[TreeSample], None] | None = None,
     check: bool = False,
+    use_wait4: bool | None = None,
 ) -> Measurement:
     """Run ``command`` and measure it.
 
     ``command`` is a list of arguments, or a string when ``shell`` is true
     (then ``/bin/sh -c`` runs it, which allows pipes). ``on_sample`` is called
     from the sampling thread for each sample, which ``pipeprof watch`` uses.
+    ``use_wait4`` picks the rusage source; by default ``os.wait4`` where it
+    exists.
     """
+    wait4 = HAS_WAIT4 if use_wait4 is None else use_wait4
     if shell:
         text = command if isinstance(command, str) else " ".join(command)
         argv: list[str] = ["/bin/sh", "-c", text]
@@ -188,6 +240,7 @@ def run_measured(
         argv = shlex.split(command) if isinstance(command, str) else list(command)
         printable = shlex.join(argv)
 
+    before = resource.getrusage(resource.RUSAGE_CHILDREN)
     start = time.monotonic()
     proc = subprocess.Popen(
         argv,
@@ -218,7 +271,7 @@ def run_measured(
     thread = threading.Thread(target=loop, name="pipeprof-sampler", daemon=True)
     thread.start()
     try:
-        _, status, usage = os.wait4(proc.pid, 0)
+        returncode, usage = _wait4(proc) if wait4 else _wait_getrusage(proc, before)
     except BaseException:
         proc.kill()
         proc.wait()
@@ -228,10 +281,9 @@ def run_measured(
     wall = time.monotonic() - start
     stop.set()
     thread.join()
-    returncode = os.waitstatus_to_exitcode(status)
     proc.returncode = returncode
 
-    rusage_peak = maxrss_to_bytes(usage.ru_maxrss)
+    rusage_peak = maxrss_to_bytes(usage.maxrss)
     sampled_peak = int(stats["peak"] or 0)
     read_bytes = stats["read"]
     write_bytes = stats["write"]
@@ -239,15 +291,15 @@ def run_measured(
         command=printable,
         returncode=returncode,
         wall_s=wall,
-        cpu_user_s=float(usage.ru_utime),
-        cpu_system_s=float(usage.ru_stime),
+        cpu_user_s=float(usage.utime),
+        cpu_system_s=float(usage.stime),
         peak_rss_bytes=max(rusage_peak, sampled_peak),
         sampled_peak_rss_bytes=sampled_peak,
         rusage_maxrss_bytes=rusage_peak,
         read_bytes=int(read_bytes) if read_bytes is not None else None,
         write_bytes=int(write_bytes) if write_bytes is not None else None,
-        block_input_ops=int(usage.ru_inblock),
-        block_output_ops=int(usage.ru_oublock),
+        block_input_ops=int(usage.inblock),
+        block_output_ops=int(usage.oublock),
         samples=int(stats["count"] or 0),
         interval_s=interval,
         timeline=timeline,
