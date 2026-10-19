@@ -303,8 +303,13 @@ def test_waiting_runs_use_the_cpu_model() -> None:
     assert wall.basis == "mostly waiting"
     assert wall.observed_range == (2.0, 15.15)
     worst = 3.56 / 15.15
-    assert wall.point == pytest.approx(cpu.point / worst)
-    assert wall.upper == pytest.approx(cpu.upper / worst)
+    # CPU upper / worst is above the slow run's wall scaled to full size, so the
+    # ratio is raised until the upper bound sits on that cap.
+    cap = 15.15 * 1e9 / 1e8
+    assert cpu.upper / worst > cap
+    ratio = cpu.upper / cap
+    assert wall.point == pytest.approx(cpu.point / ratio)
+    assert wall.upper == pytest.approx(cap)
     assert wall.lower <= wall.point <= wall.upper
     assert "mostly waiting" in wall.note and "15.15 s on 3.56 s CPU" in wall.note
     assert "2.00 to 15.15 s" in wall.note
@@ -443,3 +448,64 @@ def test_fit_log_names_the_model_kind(tmp_path: Path, monkeypatch: pytest.Monkey
     entry = fit_records[-1]["wall_s"]
     assert entry["model"] in {"linear", "power", "largest_measured"}
     assert entry["basis"] == "fitted"
+
+
+def _mib_run(mib: float, wall: float, cpu: float) -> RunPoint:
+    from pipeprof.measure import Measurement
+    from pipeprof.units import MIB
+
+    m = Measurement("x", 0, wall, cpu, 0.0, 1, 1, 1, None, None, 0, 0, 1, 0.05)
+    return RunPoint(mib / 1000, 1, "p", int(mib * MIB), 1, m)
+
+
+# A stall run with a little start-up CPU (500 s wall on 0.02 s CPU) among runs
+# that keep half a core busy.
+STALL_RUNS = [(10, 2.0, 1.0), (20, 4.0, 2.0), (50, 500.0, 0.02), (100, 20.0, 10.0)]
+
+
+def test_low_cpu_stall_run_does_not_inflate_wall() -> None:
+    from pipeprof.calibrate import MIN_CPU_SHARE, predict_metrics
+    from pipeprof.units import MIB
+
+    assert 0.02 / 500.0 < MIN_CPU_SHARE
+    runs = [_mib_run(*r) for r in STALL_RUNS]
+    wall = predict_metrics(runs, 1000 * MIB, "bytes")["wall_s"]
+    assert wall.basis == "mostly waiting"
+    # The stall is a pure wait: the ratio comes from the busy runs (0.5), so
+    # CPU 100 s gives 200 s, raised to the 500 s the stall itself took.
+    assert wall.point == pytest.approx(500.0)
+    assert wall.upper == pytest.approx(500.0)
+    # Never above any run's wall scaled in proportion to input.
+    assert wall.upper <= max(w * 1000 / x for x, w, _ in STALL_RUNS)
+    assert "1 run(s) kept under 1% of one core busy" in wall.note
+
+
+def test_low_cpu_stall_run_is_left_out_of_the_cpu_fit() -> None:
+    from pipeprof.calibrate import predict_metrics
+    from pipeprof.units import MIB
+
+    runs = [_mib_run(*r) for r in STALL_RUNS]
+    preds = predict_metrics(runs, 1000 * MIB, "bytes")
+    cpu = preds["cpu_s"]
+    # The busy runs use 0.1 s CPU per MiB exactly; the stall's 0.02 s at 50 MiB
+    # must not pull the line.
+    assert cpu.point == pytest.approx(100.0)
+    assert cpu.upper == pytest.approx(100.0)
+    assert cpu.selection.chosen.n == 3
+    assert "left out of the CPU fit" in cpu.note
+    assert "left out of the CPU fit" in preds["wall_s"].note
+
+
+def test_derived_wall_never_above_proportional_walls() -> None:
+    from pipeprof.calibrate import predict_metrics
+
+    slow = _run(0.1, 15.15, 3.56, 80e6, repeat=1)
+    fast = _run(0.1, 4.27, 3.25, 80e6, repeat=2)
+    runs = [_run(0.05, 2.0, 1.7, 60e6), slow, fast, _run(0.2, 8.1, 6.8, 120e6)]
+    wall = predict_metrics(runs, 1e9, "bytes")["wall_s"]
+    cap = 15.15 * 1e9 / 1e8  # the slow run scaled to the full input
+    assert wall.upper == pytest.approx(cap)
+    # The emitted runtime formula comes from the same scaled model, so its
+    # upper bound at full size is the capped one.
+    assert wall.selection.chosen.interval(1e9)[1] == pytest.approx(cap)
+    assert wall.lower <= wall.point <= wall.upper

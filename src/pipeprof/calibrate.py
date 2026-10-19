@@ -48,6 +48,12 @@ from pipeprof.units import format_memory
 
 DEFAULT_FRACTIONS = (0.01, 0.02, 0.05, 0.1, 0.2)
 METRICS = ("wall_s", "cpu_s", "peak_rss_bytes")
+#: Share of one core under which a run counts as a pure wait. Loading a binary
+#: and its libraries costs a few hundredths of a CPU second whatever the input,
+#: so a stalled run still shows a little CPU; under 1 percent of one core that
+#: CPU is start-up, not work that scales with input, and its ratio measures the
+#: stall, not the tool.
+MIN_CPU_SHARE = 0.01
 
 
 class CalibrationError(RuntimeError):
@@ -272,8 +278,17 @@ def waiting_runs(points: Sequence[RunPoint]) -> list[RunPoint]:
     return [p for p in points if p.measurement.wall_s > 0 and cores_busy(p) < CPU_WAIT_THRESHOLD]
 
 
+def pure_waits(points: Sequence[RunPoint]) -> list[RunPoint]:
+    """Runs that kept under ``MIN_CPU_SHARE`` of one core busy, including no CPU at all."""
+    return [p for p in points if p.measurement.wall_s > 0 and cores_busy(p) < MIN_CPU_SHARE]
+
+
 def _wall_from_cpu(
-    points: Sequence[RunPoint], cpu: Prediction, waiting: Sequence[RunPoint]
+    points: Sequence[RunPoint],
+    cpu: Prediction,
+    waiting: Sequence[RunPoint],
+    xs: Sequence[float],
+    x_full: float,
 ) -> Prediction:
     """Wall time from the CPU prediction and the measured CPU/wall ratios.
 
@@ -283,16 +298,23 @@ def _wall_from_cpu(
     upper bound assume the full run waits as much as the worst measured run;
     the lower bound assumes it waits as little as the best one.
 
-    A run with no CPU time at all (a pure wait, such as a stalled mount) has
-    a cores-busy ratio of zero, and dividing by it has no meaning. Such runs
-    are left out of the ratios; the estimate is at least their longest wall,
-    since the full run can stall as long. If every run is a pure wait there
-    is no CPU model to scale and the estimate is the observed wall range.
+    A run under ``MIN_CPU_SHARE`` of one core (a pure wait, such as a stalled
+    mount, with at most start-up CPU) has a cores-busy ratio near zero, and
+    dividing by it inflates the estimate without limit. Such runs are left
+    out of the ratios (and of the CPU fit); the estimate is at least their
+    longest wall, since the full run can stall as long. If every run is a
+    pure wait there is no CPU model to scale and the estimate is the observed
+    wall range.
+
+    The derived bound never exceeds the largest wall of any run scaled in
+    proportion to input: a wall above that would mean waiting grows faster
+    than the input, which no run showed.
     """
     timed = [p for p in points if p.measurement.wall_s > 0]
     walls = [p.measurement.wall_s for p in points]
-    pure = [p for p in timed if p.measurement.cpu_s <= 0]
-    busy = [p for p in timed if p.measurement.cpu_s > 0]
+    pure = pure_waits(points)
+    pure_ids = {id(p) for p in pure}
+    busy = [p for p in timed if id(p) not in pure_ids]
     note = (
         f"mostly waiting: {len(waiting)} of {len(points)} runs kept under "
         f"{CPU_WAIT_THRESHOLD:.0%} of one core busy, so wall time is not fitted; "
@@ -301,9 +323,10 @@ def _wall_from_cpu(
     if pure:
         pure_walls = [p.measurement.wall_s for p in pure]
         note += (
-            f"; {len(pure)} run(s) used no CPU at all (pure waits, wall "
-            f"{min(pure_walls):.2f} to {max(pure_walls):.2f} s), left out of the "
-            f"cores-busy ratio"
+            f"; {len(pure)} run(s) kept under {MIN_CPU_SHARE:.0%} of one core busy "
+            f"(pure waits, no CPU to speak of, wall {min(pure_walls):.2f} to "
+            f"{max(pure_walls):.2f} s), left out of the CPU fit and the cores-busy "
+            f"ratio"
         )
     if not busy:
         longest = max(walls)
@@ -330,24 +353,43 @@ def _wall_from_cpu(
         f"; time is the CPU model divided by the lowest cores-busy ratio ({worst:.3f}: "
         f"wall {slowest.wall_s:.2f} s on {slowest.cpu_s:.2f} s CPU)"
     )
-    point, upper = cpu.point / worst, cpu.upper / worst
+    # The largest wall any run implies at full size if all of it scaled with input.
+    scaled = [
+        p.measurement.wall_s * max(1.0, x_full / x)
+        for p, x in zip(points, xs, strict=True)
+        if x > 0
+    ]
+    ratio = worst
+    if scaled and cpu.upper / worst > max(scaled):
+        cap = max(scaled)
+        ratio = cpu.upper / cap
+        note += (
+            f"; capped at {cap:.2f} s, the longest wall of any run scaled in proportion "
+            f"to input (cores-busy ratio {ratio:.3f} used)"
+        )
+    point, upper = cpu.point / ratio, cpu.upper / ratio
     if pure:
         stall = max(p.measurement.wall_s for p in pure)
         if stall > point:
             note += f"; raised to the longest pure wait {stall:.2f} s"
         point, upper = max(point, stall), max(upper, stall)
-    # The wall model is the CPU model scaled by 1 / worst, so the Snakemake and
+    # The wall model is the CPU model scaled by 1 / ratio, so the Snakemake and
     # Nextflow runtime formulas built from it give wall minutes, as the fixed
     # sbatch time does; reusing the CPU selection would emit CPU minutes.
     cpu_fit = cpu.selection.chosen
-    wall_fit = scale_fit(cpu_fit, 1.0 / worst)
+    wall_fit = scale_fit(cpu_fit, 1.0 / ratio)
+    reason = (
+        f"mostly waiting: CPU model ({cpu_fit.kind}) divided by the lowest cores-busy "
+        f"ratio {worst:.3f}"
+    )
+    if ratio > worst:
+        reason += f", raised to {ratio:.3f} by the proportional cap"
     selection = Selection(
         wall_fit,
         {wall_fit.kind: wall_fit},
         dict(cpu.selection.cv_scores),
         dict(cpu.selection.cv_errors),
-        f"mostly waiting: CPU model ({cpu_fit.kind}) divided by the lowest cores-busy "
-        f"ratio {worst:.3f}",
+        reason,
     )
     return Prediction(
         "wall_s",
@@ -366,11 +408,24 @@ def predict_metrics(
     points: Sequence[RunPoint], x_full: float, x_variable: str, level: float = 0.95
 ) -> dict[str, Prediction]:
     """Predict each metric at ``x_full`` from the measured runs."""
-    xs = [_x_of(p, x_variable) for p in points]
+    all_xs = [_x_of(p, x_variable) for p in points]
+    pure = pure_waits(points)
     predictions: dict[str, Prediction] = {}
     for metric in METRICS:
-        ys = [max(p.value(metric), 1e-9) for p in points]
+        used = list(points)
         note = ""
+        if metric == "cpu_s" and pure:
+            # A pure wait's CPU is start-up, not work: it would pull the CPU model down.
+            pure_ids = {id(p) for p in pure}
+            rest = [p for p in points if id(p) not in pure_ids]
+            if len({_x_of(p, x_variable) for p in rest}) >= 2:
+                used = rest
+                note = (
+                    f"{len(pure)} run(s) under {MIN_CPU_SHARE:.0%} of one core busy "
+                    f"left out of the CPU fit"
+                )
+        xs = [_x_of(p, x_variable) for p in used]
+        ys = [max(p.value(metric), 1e-9) for p in used]
         basis = "fitted"
         if metric == "peak_rss_bytes":
             # Memory often sits on a fixed buffer for the small runs and only then grows.
@@ -396,7 +451,9 @@ def predict_metrics(
         )
     waiting = waiting_runs(points)
     if waiting:
-        predictions["wall_s"] = _wall_from_cpu(points, predictions["cpu_s"], waiting)
+        predictions["wall_s"] = _wall_from_cpu(
+            points, predictions["cpu_s"], waiting, all_xs, x_full
+        )
     return predictions
 
 

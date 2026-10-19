@@ -120,12 +120,25 @@ CPU lower bound divided by the highest. The prediction is marked
 `mostly waiting`. One waiting run is enough, because it shows how far the
 filesystem can stretch a run on that node.
 
-A run with no CPU time at all (a pure wait, such as a stalled mount) has a
-cores-busy ratio of zero, and dividing by it would inflate the estimate
-without limit. Such runs are left out of the ratios, and the estimate is at
-least their longest wall, since the full run can stall as long. If every run
-is a pure wait, there is no CPU model to scale: the point and upper bound are
-the longest observed wall and the lower bound the shortest. The note says so.
+A run that kept under `MIN_CPU_SHARE` (0.01) of one core busy is a pure
+wait, such as a stalled mount. It need not have zero CPU: loading the binary
+and its libraries costs a few hundredths of a CPU second whatever the input,
+so a 500 s stall can show 0.02 s of CPU. Under 1 percent of one core that CPU
+is start-up, not work that scales with input, and dividing by its ratio
+(0.00004 here) would inflate the estimate to millions of seconds. Pure waits
+are left out of the ratios and out of the CPU fit, where their start-up CPU
+would pull the CPU model down, and the estimate is at least their longest
+wall, since the full run can stall as long. If every run is a pure wait,
+there is no CPU model to scale: the point and upper bound are the longest
+observed wall and the lower bound the shortest. The note says so.
+
+The derived upper bound is also capped: it never exceeds the largest wall of
+any run scaled in proportion to input (wall times full size over that run's
+size). A bound above that would mean the waiting grows faster than the input,
+which no measured run showed. When the cap applies, the cores-busy ratio is
+raised to CPU upper bound over the cap, so point, upper bound and the runtime
+formula all come from the same scaled model. On the two Narval runs above the
+cap is the slow run's 15.15 s times 10.
 
 ## From prediction to request
 

@@ -61,10 +61,13 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - `pipeprof calibrate`: the Snakemake and Nextflow memory and time formulas
   take their safety factor from the plan's upper bound, so a flat or hinged
   memory series asks for at least the fixed request at full size.
-- `pipeprof calibrate`: runs with no CPU time at all (pure waits) are left
-  out of the cores-busy ratio, so they no longer inflate the wall estimate a
-  million times; the estimate is at least their longest wall, or the
-  observed wall range when every run is a pure wait. The note says so.
+- `pipeprof calibrate`: runs under 1 percent of one core busy (pure waits,
+  with at most start-up CPU) are left out of the cores-busy ratio and of the
+  CPU fit, so they no longer inflate the wall estimate a million times or
+  pull the CPU model; the estimate is at least their longest wall, or the
+  observed wall range when every run is a pure wait. The derived wall bound
+  never exceeds the largest wall of any run scaled in proportion to input.
+  The note says so.
 - `pipeprof calibrate`: the fit step in the run log records the model kind
   again under "model" (linear, power, largest_measured) and the basis under
   "basis".
