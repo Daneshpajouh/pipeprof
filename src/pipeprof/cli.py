@@ -1,7 +1,10 @@
-"""Command line: ``pipeprof calibrate``, ``watch``, ``tail``, ``report``, ``provenance``."""
+"""Command line: ``pipeprof calibrate``, ``watch``, ``tail``, ``report``, ``analyze``,
+``provenance``.
+"""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import subprocess
 import sys
@@ -13,6 +16,9 @@ from rich.console import Console
 from rich.table import Table
 
 from pipeprof import __version__
+from pipeprof.advise import Advice, advise
+from pipeprof.bottleneck import BottleneckReport, analyse
+from pipeprof.bound import BoundLabel, label_steps
 from pipeprof.calibrate import (
     DEFAULT_FRACTIONS,
     CalibrationError,
@@ -26,6 +32,13 @@ from pipeprof.report import Thresholds, build_report, to_html, to_json, to_markd
 from pipeprof.slurm import SlurmError, run_text, sacct_command
 from pipeprof.subsample import InputKind, SubsampleError
 from pipeprof.tail import tail as tail_view
+from pipeprof.timeline import (
+    Task,
+    load_usage,
+    tasks_from_nextflow_trace,
+    tasks_from_snakemake,
+    tasks_from_tsv,
+)
 from pipeprof.units import format_memory, format_slurm_duration, parse_memory
 from pipeprof.watch import AlertConfig, JsonlSink, watch_pid, watch_slurm
 
@@ -272,6 +285,171 @@ def report_cmd(
     (outdir / "report.json").write_text(to_json(report), encoding="utf-8")
     typer.echo(to_markdown(report).split("## Tasks")[0].rstrip())
     console.print(f"Wrote report.md, report.html and report.json to {outdir}")
+
+
+def _analysis_markdown(
+    source: str, report: BottleneckReport, labels: list[BoundLabel], advice: Advice
+) -> str:
+    cp = report.critical_path
+    out = [
+        "# Workflow bottleneck analysis",
+        "",
+        f"Source: {source}",
+        "",
+        "## Critical path",
+        "",
+        f"Method: {cp.method}.",
+        f"Wall time {cp.wall_s:.1f}s: busy {cp.busy_s:.1f}s, waiting {cp.waiting_s:.1f}s.",
+        "",
+    ]
+    out += [f"- {s.task.name}: gap before {s.gap_before_s:.1f}s" for s in cp.steps]
+    out += ["", "## Step share of wall time", ""]
+    out += [
+        f"- {s.step}: {s.critical_path_s:.1f}s on the critical path, {s.busy_s:.1f}s busy "
+        f"overall, {s.task_count} task(s)"
+        for s in report.step_shares
+    ]
+    if report.parallel_efficiency:
+        pe = report.parallel_efficiency
+        out += [
+            "",
+            "## Parallel efficiency",
+            "",
+            f"Average {pe.average:.0%} of {pe.cpus_available} CPUs; {pe.low_total_s:.1f}s "
+            f"below {pe.threshold:.0%}.",
+        ]
+    out += [
+        "",
+        "## Idle gaps",
+        "",
+        f"Total idle time {report.idle_total_s:.1f}s over {len(report.idle_gaps)} gap(s).",
+        "",
+        "## Queue wait",
+        "",
+        f"Total {report.queue_wait_total_s:.1f}s over {len(report.queue_wait_s)} task(s).",
+        "",
+        "## Retries",
+        "",
+    ]
+    out += [f"- {r.name}: {r.attempts} attempts, {r.lost_s:.1f}s lost" for r in report.retries]
+    if not report.retries:
+        out.append("- none")
+    out += ["", "## Step boundness", ""]
+    out += [f"- {b.step}: {b.label} ({'; '.join(b.evidence)})" for b in labels]
+    out += ["", "## Recommendations", ""]
+    if advice.first_step:
+        f = advice.first_step
+        out.append(f"- work on {f.step} first: {f.basis}")
+    out += [f"- {a.basis}" for a in advice.thread_advice]
+    out += [f"- {a.step} request {a.kind}: {a.basis}" for a in advice.request_advice]
+    if not (advice.first_step or advice.thread_advice or advice.request_advice):
+        out.append("- no recommendation: not enough measurements")
+    return "\n".join(out)
+
+
+def _analysis_json(
+    source: str, task_count: int, report: BottleneckReport, labels: list[BoundLabel], advice: Advice
+) -> str:
+    data = {
+        "source": source,
+        "tasks": task_count,
+        "critical_path": {
+            "method": report.critical_path.method,
+            "wall_s": report.critical_path.wall_s,
+            "busy_s": report.critical_path.busy_s,
+            "waiting_s": report.critical_path.waiting_s,
+            "steps": [
+                {
+                    "name": s.task.name,
+                    "step": s.task.step,
+                    "start": s.task.start,
+                    "end": s.task.end,
+                    "gap_before_s": s.gap_before_s,
+                }
+                for s in report.critical_path.steps
+            ],
+        },
+        "step_shares": [dataclasses.asdict(s) for s in report.step_shares],
+        "parallel_efficiency": dataclasses.asdict(report.parallel_efficiency)
+        if report.parallel_efficiency
+        else None,
+        "idle_gaps": [dataclasses.asdict(g) for g in report.idle_gaps],
+        "idle_total_s": report.idle_total_s,
+        "queue_wait_s": report.queue_wait_s,
+        "queue_wait_total_s": report.queue_wait_total_s,
+        "retries": [dataclasses.asdict(r) for r in report.retries],
+        "retry_lost_s": report.retry_lost_s,
+        "bound_labels": [dataclasses.asdict(b) for b in labels],
+        "advice": {
+            "first_step": dataclasses.asdict(advice.first_step) if advice.first_step else None,
+            "thread_advice": [dataclasses.asdict(a) for a in advice.thread_advice],
+            "request_advice": [dataclasses.asdict(a) for a in advice.request_advice],
+        },
+    }
+    return json.dumps(data, indent=2)
+
+
+@app.command("analyze")
+def analyze_cmd(
+    nextflow_trace: Annotated[
+        Path | None, typer.Option("--nextflow-trace", help="Nextflow trace file.")
+    ] = None,
+    snakemake_benchmarks: Annotated[
+        Path | None, typer.Option(help="Snakemake benchmark folder.")
+    ] = None,
+    snakemake_log: Annotated[
+        Path | None, typer.Option(help="Snakemake run log (with --snakemake-benchmarks).")
+    ] = None,
+    tsv: Annotated[
+        Path | None, typer.Option(help="Plain name/start/end TSV, any runner.")
+    ] = None,
+    usage: Annotated[
+        list[Path], typer.Option("--usage", help="StepUsage JSON lines file(s).")
+    ] = [],  # noqa: B006
+    cpus: Annotated[
+        int | None, typer.Option(help="CPUs available, for parallel efficiency.")
+    ] = None,
+    outdir: Annotated[Path, typer.Option("--outdir", "-o")] = Path("pipeprof_analysis"),
+) -> None:
+    """Whole-run bottleneck analysis: critical path, step shares, efficiency, advice."""
+    chosen = sum(x is not None for x in (nextflow_trace, snakemake_benchmarks, tsv))
+    if chosen != 1:
+        console.print(
+            "[red]give exactly one of --nextflow-trace, --snakemake-benchmarks or --tsv[/red]"
+        )
+        raise typer.Exit(2)
+
+    usage_map = load_usage(usage) if usage else {}
+    tasks: list[Task]
+    if nextflow_trace is not None:
+        tasks = tasks_from_nextflow_trace(nextflow_trace.read_text(encoding="utf-8"))
+        source = str(nextflow_trace)
+    elif snakemake_benchmarks is not None:
+        tasks = tasks_from_snakemake(snakemake_benchmarks, snakemake_log)
+        source = str(snakemake_benchmarks)
+    else:
+        assert tsv is not None
+        tasks = tasks_from_tsv(tsv.read_text(encoding="utf-8"), usage_map)
+        source = str(tsv)
+    if not tasks:
+        console.print("[red]no tasks found in the given file[/red]")
+        raise typer.Exit(2)
+
+    report = analyse(tasks, cpus_available=cpus)
+    by_step: dict[str, list[Task]] = {}
+    for t in tasks:
+        by_step.setdefault(t.step, []).append(t)
+    labels = label_steps(by_step)
+    recommendation = advise(tasks, report.critical_path, labels)
+
+    outdir.mkdir(parents=True, exist_ok=True)
+    md = _analysis_markdown(source, report, labels, recommendation)
+    (outdir / "analysis.md").write_text(md, encoding="utf-8")
+    (outdir / "analysis.json").write_text(
+        _analysis_json(source, len(tasks), report, labels, recommendation), encoding="utf-8"
+    )
+    typer.echo(md)
+    console.print(f"Wrote analysis.md and analysis.json to {outdir}")
 
 
 @app.command("provenance")
