@@ -138,7 +138,8 @@ def test_analyze_leaves_cached_tasks_out(tmp_path: Path) -> None:
     rows = [
         f"1\tALIGN\tALIGN (s1)\tCACHED\t0\t1\t{now - day}\t{now - day}\t60000\t95\t1000\t1\t-\t-",
         f"2\tSORT\tSORT (s1)\tCOMPLETED\t0\t1\t{now}\t{now}\t20000\t95\t1000\t1\t-\t-",
-        f"3\tSTATS\tSTATS (s1)\tCOMPLETED\t0\t1\t{now + 20000}\t{now + 20000}\t10000\t95\t1000\t1\t-\t-",
+        f"3\tSTATS\tSTATS (s1)\tCOMPLETED\t0\t1\t{now + 20000}\t{now + 20000}\t10000\t95\t"
+        "1000\t1\t-\t-",
     ]
     text = header + "\n".join(rows) + "\n"
     tasks = tasks_from_nextflow_trace(text)
