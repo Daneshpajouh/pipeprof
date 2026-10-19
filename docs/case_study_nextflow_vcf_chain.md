@@ -84,7 +84,7 @@ study.
 
 ## On a cluster
 
-A run on Narval on 2026-10-19 [CONFIRM job ID] checked the measurement
+A run on Narval on 2026-10-19 (job 6413772) checked the measurement
 itself: `pipeprof watch` added 0.29 s to a 4.3 s job, and its peak RSS agreed
 with the kernel's rusage peak within 0.3 percent. Install notes for the
 cluster are in [clusters.md](clusters.md).

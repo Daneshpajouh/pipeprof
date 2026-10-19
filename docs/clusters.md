@@ -56,5 +56,6 @@ only predicts the real job if it also reads from there.
 
 ## Measured overhead
 
-On Narval, `pipeprof watch` added 0.29 s to a 4.3 s job, and its peak RSS agreed
-with the kernel's rusage peak within 0.3 percent [CONFIRM job ID].
+On Narval (job 6413772, 2026-10-19), `pipeprof watch` added 0.29 s to a 4.3 s
+job, and its highest sample, 176,578,560 bytes, was within 0.3 percent of the
+kernel's rusage peak of 176,107,520 bytes.
