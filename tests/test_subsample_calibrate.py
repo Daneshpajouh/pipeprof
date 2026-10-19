@@ -262,7 +262,8 @@ def test_decreasing_series_never_predicts_below_measured(tmp_path: Path) -> None
     falling = select_model(xs, [5.0, 4.0, 3.0, 2.5, 2.0])
     assert falling.chosen.kind is ModelKind.CONSTANT
     assert falling.chosen.predict(100.0) == 5.0
-    assert falling.chosen.interval(100.0) == (5.0, 5.0)
+    # A rule's pick, not a fit: no spread, so no interval to look certain.
+    assert falling.chosen.interval(100.0) is None
     assert "largest measured" in falling.chosen.formula()
     assert "rejected decreasing" in falling.reason
 
@@ -416,9 +417,7 @@ def test_emitted_note_states_the_flat_or_hinge_reason(
     result = _fake_calibrate(tmp_path, monkeypatch, usage)
     expected = "no growth was seen" if shape == "flat" else "so the model is fitted from there on"
     for key in ("sbatch", "snakemake_rule", "nextflow_config"):
-        line = next(
-            ln for ln in result.snippets[key].splitlines() if "peak_rss_bytes:" in ln
-        )
+        line = next(ln for ln in result.snippets[key].splitlines() if "peak_rss_bytes:" in ln)
         # The basis explanation, not only the model selection reason.
         assert expected in line, (key, line)
         assert "flat: flat" not in line
@@ -565,3 +564,58 @@ def test_two_runs_give_no_interval_and_a_proportional_request(
     mem_mb, _ = _snakemake_values(result)
     assert mem_mb * 10**6 >= mem.fallback_upper * plan.mem_headroom
 
+
+
+def _snakemake_mem_at(result: Any, size_bytes: float) -> int:
+    """The emitted Snakemake mem_mb at one input size, first attempt."""
+    from types import SimpleNamespace
+
+    from pipeprof.units import MIB
+
+    namespace: dict[str, Any] = {}
+    exec(result.snippets["snakemake_rule"].split("rule job:")[0], namespace)  # noqa: S102
+    mem_mb: int = namespace["job_mem_mb"](None, SimpleNamespace(size_mb=size_bytes / MIB), 1)
+    return mem_mb
+
+
+def test_hinge_formula_never_asks_under_the_flat_level(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Flat at 500 MB up to 0.1, then rising steeply: the tail fit alone falls far
+    # under 500 MB for small inputs, which would be killed on the first try.
+    def usage(f: float) -> tuple[float, float, float]:
+        rss = 500e6 if f <= 0.1 else 500e6 + 5e9 * (f - 0.1)
+        return 100.0 * f, 100.0 * f, rss
+
+    result = _fake_calibrate(tmp_path, monkeypatch, usage)
+    mem = result.predictions["peak_rss_bytes"]
+    assert mem.basis == "flat then rising"
+    assert mem.floor == pytest.approx(500e6)
+    floor_mb = 500e6 * result.plan.mem_headroom / 1e6
+    for fraction in (0.001, 0.01, 0.05):
+        assert _snakemake_mem_at(result, fraction * result.full_input_bytes) >= floor_mb
+    nf = result.snippets["nextflow_directives"]
+    assert f"Math.max({500e6 * result.plan.mem_headroom / 2**20:.6g}, " in nf
+    # The floor never lowers the full-size request.
+    mem_mb, _ = _snakemake_values(result)
+    assert mem_mb * 10**6 >= result.plan.predicted_peak_rss_upper_bytes * result.plan.mem_headroom
+
+
+def test_all_decreasing_fits_give_no_interval_and_a_proportional_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pipeprof.fit import NO_INTERVAL_NO_GROWTH, ModelKind
+
+    # Memory falls as the input grows (start-up buffers), too fast to read as
+    # flat: every fit decreases.
+    def usage(f: float) -> tuple[float, float, float]:
+        return 100.0 * f, 100.0 * f, 300e6 * (0.01 / f) ** 0.5
+
+    result = _fake_calibrate(tmp_path, monkeypatch, usage)
+    mem = result.predictions["peak_rss_bytes"]
+    assert mem.selection.chosen.kind is ModelKind.CONSTANT
+    assert mem.lower is None and mem.upper is None
+    assert mem.interval_text(str) == NO_INTERVAL_NO_GROWTH
+    assert mem.fallback_upper is not None and mem.fallback_upper > mem.point
+    assert result.plan.predicted_peak_rss_upper_bytes == pytest.approx(mem.fallback_upper)
+    assert NO_INTERVAL_NO_GROWTH in result.snippets["sbatch"]

@@ -41,6 +41,8 @@ class FitError(ValueError):
 
 #: What reports and emitted requests say where a fit has no interval.
 NO_INTERVAL = "no interval (fewer than three runs)"
+#: The largest-measured constant, used when no fitted curve grows with input.
+NO_INTERVAL_NO_GROWTH = "no interval (no fitted curve grows with input size)"
 
 
 # Student t quantile without SciPy.
@@ -161,18 +163,19 @@ class Fit:
     @property
     def has_interval(self) -> bool:
         """Whether there is a residual variance estimate to build an interval from."""
-        return self.kind is ModelKind.CONSTANT or (self.dof >= 1 and self.sxx > 0)
+        # The largest-measured constant is a bound picked by rule, not a fit:
+        # it has no residual spread, so it has no interval either.
+        return self.kind is not ModelKind.CONSTANT and self.dof >= 1 and self.sxx > 0
 
     def interval(self, x: float, level: float = 0.95) -> tuple[float, float] | None:
         """Two sided prediction interval for a new observation at ``x``.
 
         With fewer than three points there is no residual variance estimate
         and so no interval: the result is ``None``, never a zero width interval
-        that would look like certainty. Callers say so (:data:`NO_INTERVAL`)
-        and size requests from a bound instead.
+        that would look like certainty. The largest-measured constant has no
+        interval either. Callers say so (:func:`no_interval_text`) and size
+        requests from a bound instead.
         """
-        if self.kind is ModelKind.CONSTANT:
-            return self.intercept, self.intercept
         if not self.has_interval:
             return None
         centre = self.intercept + self.slope * self._tx(x)
@@ -289,6 +292,11 @@ class Selection:
         }
 
 
+def no_interval_text(fit: Fit) -> str:
+    """Why ``fit`` has no interval, in the words the report and the requests use."""
+    return NO_INTERVAL_NO_GROWTH if fit.kind is ModelKind.CONSTANT else NO_INTERVAL
+
+
 def constant_fit(ys: Sequence[float]) -> Fit:
     """The largest measured value, used when no fitted curve grows with input size."""
     return Fit(ModelKind.CONSTANT, max(ys), 0.0, len(ys), 0.0, 0.0, 0.0)
@@ -380,6 +388,8 @@ class Plateau:
     count: int
     spread: float
     whole: bool
+    #: The largest value in the flat part: no input needs less than this.
+    level: float
 
 
 def relative_spread(ys: Sequence[float]) -> float:
@@ -409,7 +419,8 @@ def find_plateau(
     flat = pairs[:count]
     if len({x for x, _ in flat}) < 2:
         return None
-    return Plateau(flat[-1][0], count, relative_spread([y for _, y in flat]), count == len(pairs))
+    flat_ys = [y for _, y in flat]
+    return Plateau(flat[-1][0], count, relative_spread(flat_ys), count == len(pairs), max(flat_ys))
 
 
 def proportional_bound(xs: Sequence[float], ys: Sequence[float], x_new: float) -> float:
@@ -462,7 +473,12 @@ def predict_with_plateau(
         found = selection.chosen.interval(x_new, level)
         if found is None:
             return PlateauPrediction(
-                selection, selection.chosen.predict(x_new), None, None, None, NO_INTERVAL
+                selection,
+                selection.chosen.predict(x_new),
+                None,
+                None,
+                None,
+                no_interval_text(selection.chosen),
             )
         return PlateauPrediction(selection, selection.chosen.predict(x_new), *found, None)
     bound = proportional_bound(xs, ys, x_new)

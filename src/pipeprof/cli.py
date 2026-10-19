@@ -25,7 +25,6 @@ from pipeprof.calibrate import (
     calibrate,
     write_outputs,
 )
-from pipeprof.fit import NO_INTERVAL
 from pipeprof.logkit import RunLogger, new_run_id, utc_now_iso
 from pipeprof.provenance import capture
 from pipeprof.records import read_sources
@@ -184,7 +183,7 @@ def calibrate_cmd(
             out.print(
                 f"full run {metric}: predicted {v['predicted']:.4g}, actual {v['actual']:.4g}, "
                 "inside interval: "
-                + (NO_INTERVAL if v["inside_interval"] is None else str(v["inside_interval"]))
+                + ("no interval" if v["inside_interval"] is None else str(v["inside_interval"]))
             )
     out.print(f"Wrote {paths['json']} and snippets in {outdir}")
 

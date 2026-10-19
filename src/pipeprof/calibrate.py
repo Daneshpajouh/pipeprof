@@ -29,9 +29,9 @@ from pipeprof.emit import (
     snakemake_rule,
 )
 from pipeprof.fit import (
-    NO_INTERVAL,
     Selection,
     constant_fit,
+    no_interval_text,
     predict_with_plateau,
     proportional_bound,
     scale_fit,
@@ -107,6 +107,9 @@ class Prediction:
     observed_range: tuple[float, float] | None = None
     #: With no interval, the bound the request is sized from instead.
     fallback_upper: float | None = None
+    #: The least any input size needs: the level of a flat start. The fit after
+    #: a hinge says nothing below the hinge, where it would fall under this.
+    floor: float | None = None
 
     @property
     def plan_upper(self) -> float:
@@ -117,7 +120,7 @@ class Prediction:
 
     def interval_text(self, fmt: Callable[[float], str]) -> str:
         if self.lower is None or self.upper is None:
-            return NO_INTERVAL
+            return no_interval_text(self.selection.chosen)
         return f"{fmt(self.lower)} to {fmt(self.upper)}"
 
     def to_dict(self) -> dict[str, Any]:
@@ -420,7 +423,7 @@ def _wall_from_cpu(
             cpu.level,
             selection,
             basis="mostly waiting",
-            note=f"{note}; {NO_INTERVAL}",
+            note=f"{note}; {no_interval_text(cpu.selection.chosen)}",
             observed_range=(min(walls), max(walls)),
             fallback_upper=upper,
         )
@@ -460,6 +463,7 @@ def predict_metrics(
         xs = [_x_of(p, x_variable) for p in used]
         ys = [max(p.value(metric), 1e-9) for p in used]
         basis = "fitted"
+        floor: float | None = None
         if metric == "peak_rss_bytes":
             # Memory often sits on a fixed buffer for the small runs and only then grows.
             flat = predict_with_plateau(xs, ys, x_full, level)
@@ -467,6 +471,7 @@ def predict_metrics(
             if flat.plateau is not None:
                 basis = "flat" if flat.plateau.whole else "flat then rising"
                 note = flat.note
+                floor = flat.plateau.level
         else:
             selection = select_model(xs, ys)
             point = selection.chosen.predict(x_full)
@@ -489,7 +494,8 @@ def predict_metrics(
             lower = upper = None
             fallback = max(point, proportional_bound(xs, ys, x_full))
             extra = (
-                f"{NO_INTERVAL}; request sized from {fallback:.4g}, the larger of the point "
+                f"{no_interval_text(selection.chosen)}; request sized from {fallback:.4g}, "
+                "the larger of the point "
                 "prediction and the largest run scaled in proportion to input"
             )
             note = f"{note}; {extra}" if note else extra
@@ -503,6 +509,7 @@ def predict_metrics(
             basis=basis,
             note=note,
             fallback_upper=fallback,
+            floor=floor,
         )
     waiting = waiting_runs(points)
     if waiting:
@@ -666,15 +673,22 @@ def calibrate(
     x_bytes_full = float(full.size_bytes)
     size_mem_fit = mem_sel if x_variable == "bytes" else None
     size_wall_fit = wall_sel if x_variable == "bytes" else None
+    mem_floor = mem_pred.floor
     snippets = {
         "sbatch": sbatch_header(plan, job_name, partition, account, note),
         "snakemake_rule": snakemake_rule(
-            plan, job_name, size_mem_fit, size_wall_fit, x_bytes_full, note
+            plan, job_name, size_mem_fit, size_wall_fit, x_bytes_full, note, mem_floor
         ),
         "snakemake_profile": snakemake_profile(plan, job_name, partition, account),
         "nextflow_config": nextflow_config(plan, job_name.upper(), note=note),
         "nextflow_directives": nextflow_directives(
-            plan, size_mem_fit, size_wall_fit, x_bytes_full, nf_input_var, note=note
+            plan,
+            size_mem_fit,
+            size_wall_fit,
+            x_bytes_full,
+            nf_input_var,
+            note=note,
+            mem_floor=mem_floor,
         ),
     }
 
@@ -736,7 +750,7 @@ def calibrate(
 def _upper_text(pred: Prediction, fmt: Callable[[float], str]) -> str:
     """The upper bound as the emitted requests state it."""
     if pred.upper is None:
-        return f"{NO_INTERVAL}; sized from {fmt(pred.plan_upper)}"
+        return f"{no_interval_text(pred.selection.chosen)}; sized from {fmt(pred.plan_upper)}"
     return f"95% upper {fmt(pred.upper)}"
 
 

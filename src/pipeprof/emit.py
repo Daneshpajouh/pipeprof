@@ -204,12 +204,15 @@ def snakemake_rule(
     time_fit: Fit | None,
     x_full: float,
     note: str = "",
+    mem_floor: float | None = None,
 ) -> str:
     """Return Snakemake resource functions and a rule skeleton.
 
     Memory and runtime grow with ``input.size_mb`` following the chosen fit
     and double on each retry (``attempt``), so ``--retries 2`` recovers from
     an underestimate. Without a fit the plan's fixed values are used.
+    ``mem_floor`` (bytes, the level of a flat start) times the memory headroom
+    is the least memory asked for at any size.
     """
     lines = [f"# {line}" for line in note.splitlines()] if note else []
     lines.append("import math")
@@ -217,13 +220,19 @@ def snakemake_rule(
     if mem_fit is not None:
         mem_safety = safety_factor(mem_fit, x_full, plan.mem_headroom, bound=_mem_bound(plan))
         mem = rescale(mem_fit, MIB, MB, mem_safety)
+        value = f"({mem.python('size_mb')}) * {mem.safety:.4f}"
+        floor_lines: list[str] = []
+        if mem_floor:
+            floor_mb = mem_floor * plan.mem_headroom / MB
+            value = f"max({floor_mb:.6g}, {value})"
+            floor_lines = ["    # Never under the flat start's level with headroom, at any size."]
         lines += [
             f"def {rule_name}_mem_mb(wildcards, input, attempt):",
             f"    # {mem_fit.kind} fit; safety factor {mem.safety:.3f} covers the plan's upper",
             "    # bound and headroom; each retry doubles the request.",
+            *floor_lines,
             "    size_mb = max(input.size_mb, 1e-6)",
-            f"    return max(256, math.ceil(({mem.python('size_mb')}) * {mem.safety:.4f})"
-            " * 2 ** (attempt - 1))",
+            f"    return max(256, math.ceil({value}) * 2 ** (attempt - 1))",
             "",
         ]
         mem_ref = f"{rule_name}_mem_mb"
@@ -334,20 +343,24 @@ def nextflow_directives(
     x_full: float,
     input_var: str = "input_file",
     note: str = "",
+    mem_floor: float | None = None,
 ) -> str:
     """Return process directives whose memory and time scale with ``input_var.size()``.
 
     Paste these inside the process definition, where ``input_var`` is the
     name of the path input. ``size()`` is in bytes; the formulas take MiB.
+    ``mem_floor`` is as for :func:`snakemake_rule`.
     """
     lines = [f"cpus {plan.cpus}"]
     size = f"({input_var}.size() / 1048576.0)"
     if mem_fit is not None:
         mem_safety = safety_factor(mem_fit, x_full, plan.mem_headroom, bound=_mem_bound(plan))
         mem = rescale(mem_fit, MIB, MIB, mem_safety)
+        value = f"({mem.groovy(size)}) * {mem.safety:.4f}"
+        if mem_floor:
+            value = f"Math.max({mem_floor * plan.mem_headroom / MIB:.6g}, {value})"
         lines.append(
-            f"memory {{ 1.MB * Math.max(256L, Math.ceil(({mem.groovy(size)}) * {mem.safety:.4f})"
-            " as long) * task.attempt }"
+            f"memory {{ 1.MB * Math.max(256L, Math.ceil({value}) as long) * task.attempt }}"
         )
     else:
         lines.append(f"memory {{ {_nf_memory(plan.mem_bytes)} * task.attempt }}")
