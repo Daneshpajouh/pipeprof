@@ -25,4 +25,7 @@ files were produced by a local run while building this repository.
 | `tools/bsd_time_failing.txt` | real: `/usr/bin/time -l python3 -c "import sys; sys.exit(1)"` on this Mac, 2026-10-19 | a command that exits 1; `time -l` still prints no exit status at all |
 | `tools/bsd_time_io.txt` | hand-written, same `-l` layout as the real runs above | non-zero block input/output operation counts |
 
+| `tools/psrecord_ok.txt` | hand-written, psrecord `--log` column layout ([astrofrog/psrecord README](https://github.com/astrofrog/psrecord), psrecord not installed here) | elapsed seconds, CPU percent, real and virtual MB rising then flat |
+| `tools/psrecord_empty.txt` | hand-written, same format | header only, no samples |
+
 In `snakemake_macos_run/` the repository path is replaced with `REPO`, the data folder with `DATA_DIR` and the macOS temporary folder with `TMPDIR`; nothing else was edited.
