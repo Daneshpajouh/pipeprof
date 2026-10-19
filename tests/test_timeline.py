@@ -117,3 +117,61 @@ def test_load_usage_reads_json_lines(tmp_path: Path) -> None:
     usage = load_usage([path])
     assert usage["sort_vcf"].max_rss_bytes == 123
     assert usage["sort_vcf"].source == "gnutime"
+
+
+def test_snakemake_standard_benchmarks_match_by_path(tmp_path: Path) -> None:
+    # Standard benchmarks (no --benchmark-extended): no jobid column, so the
+    # file stem is the only ID, and here the stems 1, 2, 3 are also the job
+    # IDs of another rule. Times and threads must come from the jobs whose
+    # benchmark: line names each file.
+    bench = tmp_path / "benchmarks" / "sort"
+    bench.mkdir(parents=True)
+    for sample in (1, 2, 3):
+        (bench / f"{sample}.tsv").write_text(
+            "s\th:m:s\tmax_rss\tmax_vms\tmax_uss\tmax_pss\tio_in\tio_out\tmean_load\tcpu_time\n"
+            f"{10 * sample}.0\t0:00:{10 * sample}\t100\t200\t90\t95\t1\t2\t50\t{5 * sample}.0\n"
+        )
+    lines = []
+    for jobid in (1, 2, 3):
+        lines += [
+            f"[Mon Oct 19 10:0{jobid}:00 2026]",
+            "rule index:",
+            f"    output: idx/{jobid}.idx",
+            f"    jobid: {jobid}",
+            "    threads: 1",
+            "",
+            f"[Mon Oct 19 10:0{jobid}:30 2026]",
+            f"Finished job {jobid}.",
+        ]
+    for sample, jobid in ((1, 4), (2, 5), (3, 6)):
+        lines += [
+            f"[Mon Oct 19 11:0{sample}:00 2026]",
+            "rule sort:",
+            f"    output: sorted/{sample}.vcf.gz",
+            f"    benchmark: benchmarks/sort/{sample}.tsv",
+            f"    jobid: {jobid}",
+            "    threads: 4",
+            "    resources: mem_mb=2000",
+            "",
+            f"[Mon Oct 19 11:0{sample}:59 2026]",
+            f"Finished job {jobid}.",
+        ]
+    log = tmp_path / "run.log"
+    log.write_text("\n".join(lines) + "\n")
+    tasks = [t for t in tasks_from_snakemake(tmp_path / "benchmarks", log) if t.step == "sort"]
+    assert len(tasks) == 3
+    import datetime as dt
+
+    for t in sorted(tasks, key=lambda t: t.start or 0):
+        assert t.start is not None, t.name
+    starts = sorted(t.start for t in tasks if t.start is not None)
+    expected = [
+        dt.datetime(2026, 10, 19, 11, minute, 0, tzinfo=dt.UTC).timestamp() for minute in (1, 2, 3)
+    ]
+    assert starts == expected
+    by = {t.start: t for t in tasks}
+    # Each file's own elapsed time follows its own job's start.
+    assert by[expected[1]].wall_s == 20.0
+    assert all(t.cpus == 4 for t in tasks)
+    assert all(t.mem_request_bytes == 2000 * 10**6 for t in tasks)
+    assert {t.name for t in tasks} == {"sort (job 4)", "sort (job 5)", "sort (job 6)"}

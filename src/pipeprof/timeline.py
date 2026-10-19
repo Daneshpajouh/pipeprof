@@ -221,24 +221,34 @@ def tasks_from_snakemake(benchmark_dir: Path, log_path: Path | None = None) -> l
         records.extend(parse_snakemake_benchmark(file.read_text(encoding="utf-8"), file))
 
     log_text = log_path.read_text(encoding="utf-8") if log_path is not None else ""
+    # The log's job ID for each record, from the same matching apply_snakemake_log
+    # uses: by benchmark path first. A standard benchmark's own ID is its file
+    # stem, which is not a job ID and can equal another rule's job ID.
+    log_ids: dict[int, str] = {}
     if log_path is not None:
-        apply_snakemake_log(records, parse_snakemake_log(log_text))
+        pairs = apply_snakemake_log(records, parse_snakemake_log(log_text))
+        log_ids = {id(record): job.jobid for record, job in pairs}
     times = _snakemake_log_times(log_text)
 
     tasks: list[Task] = []
     for record in records:
-        log_start, log_end = times.get(record.job_id, (None, None))
+        job_id = log_ids.get(id(record))
+        if job_id is None and not record.job_id_from_file:
+            job_id = record.job_id
+        log_start, log_end = times.get(job_id, (None, None)) if job_id else (None, None)
         start = log_start
         if start is not None and record.elapsed_s is not None:
             end = start + record.elapsed_s
         else:
             end = log_end
+        # A record never matched to a log job has only its file stem to show.
+        label = f"{record.name} (job {job_id})" if job_id else f"{record.name} ({record.job_id})"
         cpu_percent = None
         if record.cpu_time_s is not None and record.elapsed_s:
             cpu_percent = 100.0 * record.cpu_time_s / record.elapsed_s
         tasks.append(
             Task(
-                name=f"{record.name} (job {record.job_id})",
+                name=label,
                 step=record.name,
                 submit=None,
                 start=start,

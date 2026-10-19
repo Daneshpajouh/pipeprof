@@ -24,7 +24,7 @@ import datetime as dt
 import io
 import json
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -65,6 +65,11 @@ class TaskRecord:
     node: str | None = None
     inferred_state: bool = False
     notes: list[str] = field(default_factory=list)
+    #: The Snakemake benchmark file this record was read from, if any.
+    benchmark_path: str | None = None
+    #: True when ``job_id`` is only the benchmark file's stem (standard
+    #: benchmarks have no jobid column), so it must not be matched as a job ID.
+    job_id_from_file: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -334,10 +339,11 @@ def parse_snakemake_benchmark(text: str, path: str | Path = "") -> list[TaskReco
         notes = []
         if rss_mb is None:
             notes.append("benchmark has no memory sample (NA)")
+        jobid = (row.get("jobid") or "").strip()
         records.append(
             TaskRecord(
                 source="snakemake",
-                job_id=str(row.get("jobid") or p.stem),
+                job_id=jobid or p.stem,
                 name=str(row.get("rule_name") or rule_from_path),
                 state="COMPLETED",
                 elapsed_s=_float_or_none(row.get("s")) or parse_hms(row.get("h:m:s") or ""),
@@ -347,6 +353,8 @@ def parse_snakemake_benchmark(text: str, path: str | Path = "") -> list[TaskReco
                 max_rss_bytes=int(rss_mb * MIB) if rss_mb is not None else None,
                 time_limit_s=time_limit,
                 notes=notes,
+                benchmark_path=str(path) if str(path) else None,
+                job_id_from_file=not jobid,
             )
         )
     return records
@@ -468,30 +476,75 @@ def _parse_resource_line(text: str) -> dict[str, str]:
     return resources
 
 
-def apply_snakemake_log(records: list[TaskRecord], jobs: dict[str, SnakemakeJob]) -> None:
+def _same_benchmark(record_path: str, log_path: str) -> bool:
+    """True when the file read is the one a log ``benchmark:`` line names.
+
+    The log names the path relative to the workflow folder; the file was read
+    from wherever the benchmark folder was passed, so the log path must match
+    the trailing parts of the read path.
+    """
+    read, named = Path(record_path).parts, Path(log_path).parts
+    return bool(named) and len(named) <= len(read) and read[-len(named) :] == named
+
+
+def match_snakemake_log(
+    records: Sequence[TaskRecord], jobs: Mapping[str, SnakemakeJob]
+) -> list[tuple[TaskRecord, SnakemakeJob]]:
+    """Pair each benchmark record with the log job it belongs to.
+
+    By the job's ``benchmark:`` path first, which works for both benchmark
+    formats; then by job ID, but only for records whose ID came from a jobid
+    column (extended format). A standard benchmark's ID is its file stem, and
+    a stem such as ``1`` can equal the job ID of a different rule.
+    """
+    pairs: list[tuple[TaskRecord, SnakemakeJob]] = []
+    used: set[int] = set()
+    for job in jobs.values():
+        found: list[TaskRecord] = []
+        if job.benchmark:
+            found = [
+                r
+                for r in records
+                if id(r) not in used
+                and r.benchmark_path
+                and _same_benchmark(r.benchmark_path, job.benchmark)
+            ]
+        if not found:
+            found = [
+                r
+                for r in records
+                if id(r) not in used and not r.job_id_from_file and r.job_id == job.jobid
+            ]
+        if not found and job.benchmark:
+            # Files moved away from the paths the log names: fall back to the
+            # stem, and only within the same rule.
+            stem = Path(job.benchmark).stem
+            found = [
+                r
+                for r in records
+                if id(r) not in used
+                and r.job_id_from_file
+                and r.job_id == stem
+                and r.name == job.rule
+            ]
+        for record in found:
+            used.add(id(record))
+            pairs.append((record, job))
+    return pairs
+
+
+def apply_snakemake_log(
+    records: list[TaskRecord], jobs: dict[str, SnakemakeJob]
+) -> list[tuple[TaskRecord, SnakemakeJob]]:
     """Fill requests from the log into benchmark records and add records for failed jobs.
 
-    Benchmarks are matched by their ``benchmark:`` path when the log names
-    one, else by job ID (extended benchmark format).
+    Records are matched to jobs by :func:`match_snakemake_log`. Returns the
+    pairs, including the records added for failed jobs, so a caller can use
+    the log's job ID for each record.
     """
-    by_id = {r.job_id: r for r in records}
-    for job in jobs.values():
-        record = by_id.get(job.jobid)
-        if record is None and job.benchmark:
-            stem = Path(job.benchmark).stem
-            record = next((r for r in records if r.job_id == stem and r.name == job.rule), None)
-        if record is None:
-            if job.status == "FAILED":
-                records.append(
-                    TaskRecord(
-                        source="snakemake",
-                        job_id=job.jobid,
-                        name=job.rule,
-                        state="FAILED",
-                        notes=["failed in the run log; no benchmark row"],
-                    )
-                )
-            continue
+    pairs = match_snakemake_log(records, jobs)
+    matched = {job.jobid for _, job in pairs}
+    for record, job in pairs:
         if job.status == "FAILED":
             record.state = "FAILED"
         if record.alloc_cpus is None and job.threads is not None:
@@ -501,6 +554,19 @@ def apply_snakemake_log(records: list[TaskRecord], jobs: dict[str, SnakemakeJob]
             record.req_mem_bytes = int(mem * 10**6) if mem is not None else None
         if record.time_limit_s is None:
             record.time_limit_s = _snakemake_time_limit(dict(job.resources))
+    for job in jobs.values():
+        if job.jobid in matched or job.status != "FAILED":
+            continue
+        failed = TaskRecord(
+            source="snakemake",
+            job_id=job.jobid,
+            name=job.rule,
+            state="FAILED",
+            notes=["failed in the run log; no benchmark row"],
+        )
+        records.append(failed)
+        pairs.append((failed, job))
+    return pairs
 
 
 def parse_watch_log(records: list[dict[str, Any]], name: str = "") -> list[TaskRecord]:
