@@ -336,7 +336,6 @@ def select_model(
     return Selection(fits[chosen_kind], fits, scores, errors, reason + note)
 
 
-
 def scale_fit(fit: Fit, factor: float) -> Fit:
     """The same model with every prediction and bound multiplied by ``factor``.
 
@@ -352,6 +351,7 @@ def scale_fit(fit: Fit, factor: float) -> Fit:
     else:
         intercept, slope, sd = fit.intercept * factor, fit.slope * factor, fit.residual_sd * factor
     return Fit(fit.kind, intercept, slope, fit.n, sd, fit.x_mean, fit.sxx)
+
 
 # Plateaus: flat small runs, then growth.
 
