@@ -21,11 +21,15 @@ $ pytest --cov=hpc_job_profiler            # macOS, Python 3.13.9, 2026-10-19 12
 112 passed in 31.18s; TOTAL 2177 statements, 97% coverage (branch coverage on)
 $ docker run --rm hjp-test                # Debian, python:3.13-slim, 2026-10-19 12:16
 112 passed in 9.08s; TOTAL 2177 statements, 97%
+$ git clone . /tmp/c && docker build --target test -t c /tmp/c && docker run --rm c   # fresh clone, 12:17
+112 passed in 8.74s; TOTAL 97%
 $ bats tests/shell/fetch_data.bats
 ok 1 reuses present files and prints their SHA-256
 ok 2 stops on an MD5 mismatch
 ```
 
+The fresh clone check exists because `tests/data` was once untracked (a
+`data/` ignore rule matched it) while every local run still passed.
 The container run found one real bug that the Mac run could not: `samtools
 --version` from Debian's samtools 1.21 contains a byte that is not UTF-8, and
 `provenance.tool_version` raised `UnicodeDecodeError`. It now decodes with
