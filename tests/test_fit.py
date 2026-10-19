@@ -200,3 +200,23 @@ def test_growing_series_is_unchanged() -> None:
     sel = select_model(xs, ys)
     assert pred.plateau is None
     assert (pred.lower, pred.upper) == sel.chosen.interval(100.0)
+
+
+def test_plateau_ending_inside_a_size_with_repeats() -> None:
+    from pipeprof.fit import find_plateau, predict_with_plateau
+
+    # Two repeats per size; the second run at x=2 breaks the flat run. The flat
+    # prefix must not end half way through the repeats of x=2, or the tail
+    # after it holds one size and no model can be fitted.
+    xs = [1.0, 1.0, 2.0, 2.0]
+    ys = [100.0, 100.0, 100.0, 200.0]
+    assert find_plateau(xs, ys) is None
+    pred = predict_with_plateau(xs, ys, 10.0)
+    assert pred.plateau is None
+    assert pred.point >= 200.0
+
+    # With a third size the plateau still ends on a whole size (x=1 and x=2 both flat).
+    xs = [1.0, 1.0, 2.0, 2.0, 3.0, 3.0]
+    ys = [100.0, 101.0, 100.0, 102.0, 300.0, 310.0]
+    plateau = find_plateau(xs, ys)
+    assert plateau is not None and plateau.end_x == 2.0 and plateau.count == 4

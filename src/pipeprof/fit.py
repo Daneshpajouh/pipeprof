@@ -363,7 +363,7 @@ def relative_spread(ys: Sequence[float]) -> float:
 def find_plateau(
     xs: Sequence[float], ys: Sequence[float], spread: float = FLAT_SPREAD
 ) -> Plateau | None:
-    """The longest flat prefix of the series, or ``None`` if it spans under two sizes.
+    """The longest flat prefix of whole sizes, or ``None`` if it spans under two sizes.
 
     A fit through a flat prefix says the value does not grow, which is only
     known to be true up to the end of the prefix.
@@ -374,6 +374,11 @@ def find_plateau(
         if relative_spread([y for _, y in pairs[:index]]) > spread:
             break
         count = index
+    # A plateau ends on a whole size. With repeats, the flat run can break between
+    # two runs of one size; that size is then not flat, and keeping part of it
+    # would leave a tail of one size that no model can be fitted to.
+    while 0 < count < len(pairs) and pairs[count - 1][0] == pairs[count][0]:
+        count -= 1
     flat = pairs[:count]
     if len({x for x, _ in flat}) < 2:
         return None
