@@ -14,7 +14,7 @@ dist/
 build/
 .DS_Store
 # raw data never lives in the repository
-data/
+/data/
 runs/
 *.bam
 *.bai
@@ -27,3 +27,4 @@ examples/*/benchmarks/
 examples/*/logs/
 examples/*/.snakemake/
 examples/*/hjp_report/
+.hypothesis/

@@ -1,0 +1,2 @@
+s	h:m:s	max_rss	max_vms	max_uss	max_pss	io_in	io_out	mean_load	cpu_time	jobid	rule_name	wildcards	params	threads	cpu_usage	resources	input_size_mb
+2.14	0:00:02	NA	NA	NA	NA	NA	NA	NA	NA	2	sort_vcf	{'chrom': '1'}	{}	1	NA	{'tmpdir': 'TMPDIR', '_nodes': 1, 'runtime': 10, 'mem_mb': 1000, 'mem': '1 GB', 'mem_mib': 954, '_cores': 1}	{'results/extract/chr1.vcf.gz': 17.011786460876465}

@@ -1,0 +1,2 @@
+s	h:m:s	max_rss	max_vms	max_uss	max_pss	io_in	io_out	mean_load	cpu_time	jobid	rule_name	wildcards	params	threads	cpu_usage	resources	input_size_mb
+2.41	0:00:02	NA	NA	NA	NA	NA	NA	NA	NA	6	extract_chrom	{'chrom': '2'}	{}	1	NA	{'tmpdir': 'TMPDIR', '_nodes': 1, 'runtime': 10, 'mem_mb': 500, 'mem': '500 MB', 'mem_mib': 477, '_cores': 1}	{'DATA_DIR/clinvar/clinvar.vcf.gz': 191.15167617797852}

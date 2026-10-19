@@ -1,0 +1,7 @@
+task_id	hash	native_id	name	status	exit	submit	duration	realtime	%cpu	peak_rss	peak_vmem	rchar	wchar
+1	3a/7f21c9	5101	alignReads (S1)	COMPLETED	0	2026-10-03 09:00:01.120	1h 2m 5s	1h 1m 40s	4402.5%	38.2 GB	41.5 GB	180.3 GB	96.1 GB
+2	5c/0a93be	5102	markDuplicates (S1)	FAILED	137	2026-10-03 10:02:10.004	18m 3s	17m 50s	98.0%	47.9 GB	50.2 GB	96.1 GB	12 GB
+3	9d/11aa04	5103	markDuplicates (S1)	COMPLETED	0	2026-10-03 10:20:30.410	25m 10s	24m 58s	99.1%	71.4 GB	74 GB	96.1 GB	94.8 GB
+4	e1/45bc77	5104	mutect2Wf:mutect2 (chr1)	COMPLETED	0	2026-10-03 10:46:01.000	40m 2s	39m 50s	392.4%	6.1 GB	8.8 GB	12.4 GB	210.5 MB
+5	f0/0c11d2	5105	mutect2Wf:mutect2 (chr2)	COMPLETED	0	2026-10-03 10:46:01.200	37m 30s	37m 11s	388.0%	5.8 GB	8.6 GB	11.9 GB	198.2 MB
+6	12/9e8f00	5106	mutect2Wf:createPassVcfs (S1)	COMPLETED	0	2026-10-03 11:26:10.050	12s	2.4s	61.2%	180.4 MB	1.1 GB	409.3 MB	52.6 MB

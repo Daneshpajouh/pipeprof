@@ -1,0 +1,336 @@
+Assuming unrestricted shared filesystem usage.
+
+SNAKEMAKE
+=========
+  Date: 2026-10-19 11:30:43
+  Workflow ID: 5e9ea43a-996e-4fbb-9aa6-030c319a7f6e
+  Platform: macOS-27.0.1-arm64-arm-64bit-Mach-O
+  Host: Mac-Studio.local
+  User: studio
+  Snakemake version: 9.27.0
+  Python version: 3.13.9 (v3.13.9:8183fa5e3f7, Oct 14 2025, 10:27:13) [Clang 16.0.0 (clang-1600.0.26.6)]
+  Command: ../../.venv/bin/snakemake --cores 4 --scheduler greedy --benchmark-extended
+  Snakefile: REPO/examples/snakemake_clinvar/Snakefile
+  Base directory: REPO/examples/snakemake_clinvar
+  Run directory: REPO/examples/snakemake_clinvar
+  Working directory: REPO/examples/snakemake_clinvar
+  Config file(s): ['config.yaml']
+  Config MD5: 35a88352fb77aceffa370d7410bb86be
+
+Building DAG of jobs...
+Using shell: /opt/homebrew/bin/bash
+Provided cores: 4
+Rules claiming more threads will be scaled down.
+Job stats:
+job              count
+-------------  -------
+extract_chrom        6
+sort_vcf             6
+stats                6
+all                  1
+total               19
+
+Select jobs to execute...
+Execute 4 jobs...
+[Mon Oct 19 11:30:43 2026]
+localrule extract_chrom:
+    input: DATA_DIR/clinvar/clinvar.vcf.gz
+    output: results/extract/chr17.vcf.gz
+    log: logs/extract_chrom/chr17.log
+    jobid: 9
+    benchmark: benchmarks/extract_chrom/chr17.tsv
+    reason: Missing output files: results/extract/chr17.vcf.gz
+    wildcards: chrom=17
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=500, mem=500 MB, mem_mib=477
+[Mon Oct 19 11:30:43 2026]
+localrule extract_chrom:
+    input: DATA_DIR/clinvar/clinvar.vcf.gz
+    output: results/extract/chr2.vcf.gz
+    log: logs/extract_chrom/chr2.log
+    jobid: 6
+    benchmark: benchmarks/extract_chrom/chr2.tsv
+    reason: Missing output files: results/extract/chr2.vcf.gz
+    wildcards: chrom=2
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=500, mem=500 MB, mem_mib=477
+[Mon Oct 19 11:30:43 2026]
+localrule extract_chrom:
+    input: DATA_DIR/clinvar/clinvar.vcf.gz
+    output: results/extract/chr22.vcf.gz
+    log: logs/extract_chrom/chr22.log
+    jobid: 15
+    benchmark: benchmarks/extract_chrom/chr22.tsv
+    reason: Missing output files: results/extract/chr22.vcf.gz
+    wildcards: chrom=22
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=500, mem=500 MB, mem_mib=477
+[Mon Oct 19 11:30:43 2026]
+localrule extract_chrom:
+    input: DATA_DIR/clinvar/clinvar.vcf.gz
+    output: results/extract/chr1.vcf.gz
+    log: logs/extract_chrom/chr1.log
+    jobid: 3
+    benchmark: benchmarks/extract_chrom/chr1.tsv
+    reason: Missing output files: results/extract/chr1.vcf.gz
+    wildcards: chrom=1
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=500, mem=500 MB, mem_mib=477
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:44 2026]
+Finished jobid: 15 (Rule: extract_chrom)
+1 of 19 steps (5%) done
+Select jobs to execute...
+Execute 1 jobs...
+[Mon Oct 19 11:30:44 2026]
+localrule extract_chrom:
+    input: DATA_DIR/clinvar/clinvar.vcf.gz
+    output: results/extract/chrX.vcf.gz
+    log: logs/extract_chrom/chrX.log
+    jobid: 18
+    benchmark: benchmarks/extract_chrom/chrX.tsv
+    reason: Missing output files: results/extract/chrX.vcf.gz
+    wildcards: chrom=X
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=500, mem=500 MB, mem_mib=477
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+Select jobs to execute...
+[Mon Oct 19 11:30:45 2026]
+Finished jobid: 9 (Rule: extract_chrom)
+2 of 19 steps (11%) done
+Execute 1 jobs...
+[Mon Oct 19 11:30:45 2026]
+localrule extract_chrom:
+    input: DATA_DIR/clinvar/clinvar.vcf.gz
+    output: results/extract/chr21.vcf.gz
+    log: logs/extract_chrom/chr21.log
+    jobid: 12
+    benchmark: benchmarks/extract_chrom/chr21.tsv
+    reason: Missing output files: results/extract/chr21.vcf.gz
+    wildcards: chrom=21
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=500, mem=500 MB, mem_mib=477
+Select jobs to execute...
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:46 2026]
+Finished jobid: 18 (Rule: extract_chrom)
+3 of 19 steps (16%) done
+Execute 1 jobs...
+[Mon Oct 19 11:30:46 2026]
+localrule sort_vcf:
+    input: results/extract/chr17.vcf.gz
+    output: results/sorted/chr17.vcf.gz
+    log: logs/sort_vcf/chr17.log
+    jobid: 8
+    benchmark: benchmarks/sort_vcf/chr17.tsv
+    reason: Missing output files: results/sorted/chr17.vcf.gz; Input files updated by another job: results/extract/chr17.vcf.gz
+    wildcards: chrom=17
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:46 2026]
+Finished jobid: 6 (Rule: extract_chrom)
+4 of 19 steps (21%) done
+[Mon Oct 19 11:30:46 2026]
+Finished jobid: 12 (Rule: extract_chrom)
+5 of 19 steps (26%) done
+Select jobs to execute...
+Execute 2 jobs...
+[Mon Oct 19 11:30:46 2026]
+localrule sort_vcf:
+    input: results/extract/chrX.vcf.gz
+    output: results/sorted/chrX.vcf.gz
+    log: logs/sort_vcf/chrX.log
+    jobid: 17
+    benchmark: benchmarks/sort_vcf/chrX.tsv
+    reason: Missing output files: results/sorted/chrX.vcf.gz; Input files updated by another job: results/extract/chrX.vcf.gz
+    wildcards: chrom=X
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+[Mon Oct 19 11:30:46 2026]
+localrule sort_vcf:
+    input: results/extract/chr2.vcf.gz
+    output: results/sorted/chr2.vcf.gz
+    log: logs/sort_vcf/chr2.log
+    jobid: 5
+    benchmark: benchmarks/sort_vcf/chr2.tsv
+    reason: Missing output files: results/sorted/chr2.vcf.gz; Input files updated by another job: results/extract/chr2.vcf.gz
+    wildcards: chrom=2
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+[Mon Oct 19 11:30:46 2026]
+Finished jobid: 3 (Rule: extract_chrom)
+6 of 19 steps (32%) done
+Select jobs to execute...
+Execute 1 jobs...
+[Mon Oct 19 11:30:46 2026]
+localrule sort_vcf:
+    input: results/extract/chr1.vcf.gz
+    output: results/sorted/chr1.vcf.gz
+    log: logs/sort_vcf/chr1.log
+    jobid: 2
+    benchmark: benchmarks/sort_vcf/chr1.tsv
+    reason: Missing output files: results/sorted/chr1.vcf.gz; Input files updated by another job: results/extract/chr1.vcf.gz
+    wildcards: chrom=1
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+Select jobs to execute...
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:47 2026]
+Finished jobid: 17 (Rule: sort_vcf)
+7 of 19 steps (37%) done
+Execute 1 jobs...
+[Mon Oct 19 11:30:47 2026]
+localrule sort_vcf:
+    input: results/extract/chr22.vcf.gz
+    output: results/sorted/chr22.vcf.gz
+    log: logs/sort_vcf/chr22.log
+    jobid: 14
+    benchmark: benchmarks/sort_vcf/chr22.tsv
+    reason: Missing output files: results/sorted/chr22.vcf.gz; Input files updated by another job: results/extract/chr22.vcf.gz
+    wildcards: chrom=22
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+Select jobs to execute...
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:48 2026]
+Finished jobid: 8 (Rule: sort_vcf)
+8 of 19 steps (42%) done
+Execute 1 jobs...
+[Mon Oct 19 11:30:48 2026]
+localrule sort_vcf:
+    input: results/extract/chr21.vcf.gz
+    output: results/sorted/chr21.vcf.gz
+    log: logs/sort_vcf/chr21.log
+    jobid: 11
+    benchmark: benchmarks/sort_vcf/chr21.tsv
+    reason: Missing output files: results/sorted/chr21.vcf.gz; Input files updated by another job: results/extract/chr21.vcf.gz
+    wildcards: chrom=21
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+[Mon Oct 19 11:30:48 2026]
+Finished jobid: 14 (Rule: sort_vcf)
+9 of 19 steps (47%) done
+Select jobs to execute...
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:48 2026]
+Finished jobid: 5 (Rule: sort_vcf)
+10 of 19 steps (53%) done
+Execute 1 jobs...
+[Mon Oct 19 11:30:48 2026]
+localrule stats:
+    input: results/sorted/chr2.vcf.gz
+    output: results/stats/chr2.stats.txt
+    log: logs/stats/chr2.log
+    jobid: 4
+    benchmark: benchmarks/stats/chr2.tsv
+    reason: Missing output files: results/stats/chr2.stats.txt; Input files updated by another job: results/sorted/chr2.vcf.gz
+    wildcards: chrom=2
+    threads: 2
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:49 2026]
+Finished jobid: 11 (Rule: sort_vcf)
+11 of 19 steps (58%) done
+Select jobs to execute...
+[Mon Oct 19 11:30:49 2026]
+Finished jobid: 2 (Rule: sort_vcf)
+12 of 19 steps (63%) done
+Execute 1 jobs...
+[Mon Oct 19 11:30:49 2026]
+localrule stats:
+    input: results/sorted/chr1.vcf.gz
+    output: results/stats/chr1.stats.txt
+    log: logs/stats/chr1.log
+    jobid: 1
+    benchmark: benchmarks/stats/chr1.tsv
+    reason: Missing output files: results/stats/chr1.stats.txt; Input files updated by another job: results/sorted/chr1.vcf.gz
+    wildcards: chrom=1
+    threads: 2
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+Select jobs to execute...
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:49 2026]
+Finished jobid: 4 (Rule: stats)
+13 of 19 steps (68%) done
+Execute 1 jobs...
+[Mon Oct 19 11:30:49 2026]
+localrule stats:
+    input: results/sorted/chr17.vcf.gz
+    output: results/stats/chr17.stats.txt
+    log: logs/stats/chr17.log
+    jobid: 7
+    benchmark: benchmarks/stats/chr17.tsv
+    reason: Missing output files: results/stats/chr17.stats.txt; Input files updated by another job: results/sorted/chr17.vcf.gz
+    wildcards: chrom=17
+    threads: 2
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+Select jobs to execute...
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:49 2026]
+Finished jobid: 7 (Rule: stats)
+14 of 19 steps (74%) done
+Execute 1 jobs...
+[Mon Oct 19 11:30:49 2026]
+localrule stats:
+    input: results/sorted/chrX.vcf.gz
+    output: results/stats/chrX.stats.txt
+    log: logs/stats/chrX.log
+    jobid: 16
+    benchmark: benchmarks/stats/chrX.tsv
+    reason: Missing output files: results/stats/chrX.stats.txt; Input files updated by another job: results/sorted/chrX.vcf.gz
+    wildcards: chrom=X
+    threads: 2
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+Benchmark: unable to collect cpu and memory benchmark statistics: 
+[Mon Oct 19 11:30:49 2026]
+Finished jobid: 1 (Rule: stats)
+15 of 19 steps (79%) done
+Select jobs to execute...
+Execute 1 jobs...
+[Mon Oct 19 11:30:49 2026]
+localrule stats:
+    input: results/sorted/chr22.vcf.gz
+    output: results/stats/chr22.stats.txt
+    log: logs/stats/chr22.log
+    jobid: 13
+    benchmark: benchmarks/stats/chr22.tsv
+    reason: Missing output files: results/stats/chr22.stats.txt; Input files updated by another job: results/sorted/chr22.vcf.gz
+    wildcards: chrom=22
+    threads: 2
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+Select jobs to execute...
+[Mon Oct 19 11:30:49 2026]
+Finished jobid: 13 (Rule: stats)
+16 of 19 steps (84%) done
+Execute 1 jobs...
+[Mon Oct 19 11:30:49 2026]
+localrule stats:
+    input: results/sorted/chr21.vcf.gz
+    output: results/stats/chr21.stats.txt
+    log: logs/stats/chr21.log
+    jobid: 10
+    benchmark: benchmarks/stats/chr21.tsv
+    reason: Missing output files: results/stats/chr21.stats.txt; Input files updated by another job: results/sorted/chr21.vcf.gz
+    wildcards: chrom=21
+    threads: 2
+    resources: tmpdir=TMPDIR, runtime=10, mem_mb=1000, mem=1 GB, mem_mib=954
+[Mon Oct 19 11:30:50 2026]
+Finished jobid: 10 (Rule: stats)
+17 of 19 steps (89%) done
+RuleException:
+RuntimeError in file "REPO/examples/snakemake_clinvar/Snakefile", line 73:
+mach_vm_region(VM_REGION_TOP_INFO) syscall failed
+  File "REPO/.venv/lib/python3.13/site-packages/psutil/__init__.py", line 1154, in memory_full_info
+  File "REPO/.venv/lib/python3.13/site-packages/psutil/_psosx.py", line 347, in wrapper
+  File "REPO/.venv/lib/python3.13/site-packages/psutil/_psosx.py", line 460, in memory_full_info
+[Mon Oct 19 11:30:50 2026]
+Error in rule stats:
+    message: None
+    jobid: 16
+    input: results/sorted/chrX.vcf.gz
+    output: results/stats/chrX.stats.txt
+    log: logs/stats/chrX.log (check log file(s) for error details)
+    shell:
+        bcftools stats --threads 2 results/sorted/chrX.vcf.gz > results/stats/chrX.stats.txt 2> logs/stats/chrX.log
+        (command exited with non-zero exit code)
+Removing output files of failed job stats since they might be corrupted:
+results/stats/chrX.stats.txt
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error messages
+Complete log(s): REPO/examples/snakemake_clinvar/.snakemake/log/2026-10-19T113043.412429.snakemake.log
+Elapsed time: 0:00:06.680701
+WorkflowError:
+At least one job did not complete successfully.
