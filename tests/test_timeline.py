@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from pipeprof.records import SnakemakeJob, TaskRecord
 from pipeprof.timeline import (
     Task,
@@ -222,3 +224,33 @@ def test_snakemake_stem_fallback_needs_a_unique_match(tmp_path: Path) -> None:
     one, jobs1 = _moved_align(tmp_path / "one", (2,))
     pairs = match_snakemake_log(one, jobs1)
     assert [(r.elapsed_s, j.jobid) for r, j in pairs] == [(20.0, "2")]
+
+
+def test_snakemake_benchmark_repeats_are_one_task(tmp_path: Path) -> None:
+    # benchmark: repeat("benchmarks/sort/1.tsv", 3) writes three rows for one job;
+    # they ran one after another, not as three tasks at the same start.
+    bench = tmp_path / "benchmarks" / "sort"
+    bench.mkdir(parents=True)
+    head = "s\th:m:s\tmax_rss\tmax_vms\tmax_uss\tmax_pss\tio_in\tio_out\tmean_load\tcpu_time\n"
+    rows = "".join(f"10.0\t0:00:10\t{100 + i}\t200\t90\t95\t1\t2\t50\t8.0\n" for i in range(3))
+    (bench / "1.tsv").write_text(head + rows)
+    log = tmp_path / "run.log"
+    lines = [
+        "[Mon Oct 19 11:00:00 2026]",
+        "rule sort:",
+        "    output: sorted/1.vcf.gz",
+        "    benchmark: benchmarks/sort/1.tsv",
+        "    jobid: 4",
+        "    threads: 1",
+        "",
+        "[Mon Oct 19 11:00:31 2026]",
+        "Finished job 4.",
+    ]
+    log.write_text("\n".join(lines) + "\n")
+    tasks = tasks_from_snakemake(tmp_path / "benchmarks", log)
+    assert len(tasks) == 1
+    (task,) = tasks
+    assert task.name == "sort (job 4)"
+    assert task.wall_s == 30.0  # three 10 s repeats in a row
+    assert task.cpu_percent == pytest.approx(80.0)
+    assert task.max_rss_bytes == round(102 * 1024 * 1024)

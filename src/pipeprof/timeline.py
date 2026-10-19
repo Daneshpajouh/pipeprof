@@ -14,7 +14,7 @@ import datetime as dt
 import io
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from pipeprof.records import (
@@ -231,8 +231,8 @@ def tasks_from_snakemake(benchmark_dir: Path, log_path: Path | None = None) -> l
     times = _snakemake_log_times(log_text)
 
     tasks: list[Task] = []
-    for record in records:
-        job_id = log_ids.get(id(record))
+    for first, record in _join_repeats(records):
+        job_id = log_ids.get(id(first))
         if job_id is None and not record.job_id_from_file:
             job_id = record.job_id
         log_start, log_end = times.get(job_id, (None, None)) if job_id else (None, None)
@@ -264,6 +264,51 @@ def tasks_from_snakemake(benchmark_dir: Path, log_path: Path | None = None) -> l
             )
         )
     return tasks
+
+
+def _join_repeats(records: Sequence[TaskRecord]) -> list[tuple[TaskRecord, TaskRecord]]:
+    """One record per benchmark file: ``benchmark: repeat(..., n)`` writes a row per repeat.
+
+    The repeats ran one after another inside one job, so they are one task on
+    the timeline, not ``n`` tasks at the same start. Elapsed and CPU time add
+    up over the repeats (``None`` if any repeat lacks them); peak RSS is the
+    largest. Returns (first row as read, joined record) pairs, so log matches
+    made on the rows as read still apply.
+    """
+    groups: dict[str, list[TaskRecord]] = {}
+    order: list[TaskRecord | str] = []
+    for record in records:
+        key = record.benchmark_path
+        if key is None:
+            order.append(record)
+        elif key not in groups:
+            groups[key] = [record]
+            order.append(key)
+        else:
+            groups[key].append(record)
+
+    def total(values: list[float | None]) -> float | None:
+        return None if any(v is None for v in values) else sum(v for v in values if v is not None)
+
+    joined: list[tuple[TaskRecord, TaskRecord]] = []
+    for item in order:
+        if isinstance(item, TaskRecord):
+            joined.append((item, item))
+            continue
+        rows = groups[item]
+        if len(rows) == 1:
+            joined.append((rows[0], rows[0]))
+            continue
+        rss = [r.max_rss_bytes for r in rows if r.max_rss_bytes is not None]
+        merged = replace(
+            rows[0],
+            elapsed_s=total([r.elapsed_s for r in rows]),
+            cpu_time_s=total([r.cpu_time_s for r in rows]),
+            max_rss_bytes=max(rss) if rss else None,
+            notes=[*rows[0].notes, f"{len(rows)} benchmark repeats joined into one task"],
+        )
+        joined.append((rows[0], merged))
+    return joined
 
 
 # Plain TSV, any runner
