@@ -311,9 +311,7 @@ def build_report(
     # them; efficiency and requests describe this run, as analyze does.
     cached = sum(1 for r in records if r.state == "CACHED")
     metrics = [
-        task_metrics(r, limits)
-        for r in records
-        if r.state not in {"RUNNING", "PENDING", "CACHED"}
+        task_metrics(r, limits) for r in records if r.state not in {"RUNNING", "PENDING", "CACHED"}
     ]
     groups: dict[str, list[TaskMetrics]] = {}
     for m in metrics:

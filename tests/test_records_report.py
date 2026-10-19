@@ -235,14 +235,14 @@ def test_single_task_recommendation_says_so() -> None:
 
 
 def test_report_leaves_nextflow_cached_tasks_out() -> None:
-    # A -resume run: SORT_VCF (chr1) was cached, with the earlier run's times and a
+    # A -resume run: SORT_VCF_chr1 was cached, with the earlier run's times and a
     # 10% CPU share that would otherwise raise a CPU underuse flag.
-    head = "task_id\tprocess\tname\tstatus\texit\tattempt\trealtime\t%cpu\tpeak_rss\tcpus\tmemory\ttime"
-    rows = [
-        "1\tSORT_VCF\tSORT_VCF (chr1)\tCACHED\t0\t1\t245000\t40.0\t1900000000\t4\t2147483648\t1800000",
-        "2\tSORT_VCF\tSORT_VCF (chr2)\tCOMPLETED\t0\t1\t250000\t390.0\t700000000\t4\t2147483648\t1800000",
+    table = [
+        "task_id process name status exit attempt realtime %cpu peak_rss cpus memory time",
+        "1 SORT_VCF SORT_VCF_chr1 CACHED 0 1 245000 40.0 1900000000 4 2147483648 1800000",
+        "2 SORT_VCF SORT_VCF_chr2 COMPLETED 0 1 250000 390.0 700000000 4 2147483648 1800000",
     ]
-    records = parse_nextflow_trace("\n".join([head, *rows]) + "\n")
+    records = parse_nextflow_trace("".join(row.replace(" ", "\t") + "\n" for row in table))
     assert [r.state for r in records] == ["CACHED", "COMPLETED"]
     report = build_report(records)
     assert report.cached_tasks == 1
