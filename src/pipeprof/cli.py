@@ -460,12 +460,12 @@ def analyze_cmd(
         source = str(snakemake_benchmarks)
     else:
         assert tsv is not None
-        tasks = tasks_from_tsv(tsv.read_text(encoding="utf-8"), usage_map)
+        tasks = tasks_from_tsv(tsv.read_text(encoding="utf-8"))
         source = str(tsv)
     if not tasks:
         console.print("[red]no tasks found in the given file[/red]")
         raise typer.Exit(2)
-    if usage_map and tsv is None:
+    if usage_map:
         matched = apply_usage(tasks, usage_map)
         console.print(f"Tool readings matched {matched} of {len(tasks)} tasks")
 

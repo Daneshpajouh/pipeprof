@@ -129,3 +129,23 @@ def test_usage_command_missing_file_is_one_line(tmp_path: Path) -> None:
     assert result.exit_code == 2
     assert not isinstance(result.exception, FileNotFoundError)
     assert result.stderr.strip() == f"pipeprof: input not found: {missing}"
+
+
+def test_analyze_tsv_derives_cpu_share_from_tool_times(tmp_path: Path) -> None:
+    # The tool reading gives user plus sys time and no cpu_percent: the share
+    # must be derived over the task's wall time, as for every other source.
+    tsv = tmp_path / "run.tsv"
+    tsv.write_text("name\tstart\tend\nalign\t0\t100\n")
+    usage_file = tmp_path / "usage.jsonl"
+    reading = {"source": "time", "step": "align", "user_s": 80.0, "sys_s": 10.0}
+    usage_file.write_text(json.dumps(reading) + "\n")
+    out = tmp_path / "an"
+    result = runner.invoke(app, [
+        "analyze", "--tsv", str(tsv), "--usage", str(usage_file), "--outdir", str(out),
+    ])
+    assert result.exit_code == 0, result.output
+    assert "Tool readings matched 1 of 1 tasks" in result.output
+    report = json.loads((out / "analysis.json").read_text())
+    (label,) = report["bound_labels"]
+    assert label["label"] == "cpu-bound"
+    assert any("0.90 cores busy" in e for e in label["evidence"])

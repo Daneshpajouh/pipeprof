@@ -105,7 +105,8 @@ Versions follow [Semantic Versioning](https://semver.org/).
   to read only the profile the viewer opens first.
 - `pipeprof analyze --usage`: a CPU share derived from a tool's user plus
   system time is now over the task's wall time, as documented, and over the
-  tool's own wall time only when the task has no start and end.
+  tool's own wall time only when the task has no start and end. A plain TSV
+  goes through the same step, so the derived share applies to it too.
 - `pipeprof usage` with a missing file exits 2 with one line naming it, as
   `report` and `analyze` do, instead of a `FileNotFoundError` traceback.
 - docs/case_study_nextflow_vcf_chain.md: the STATS row now reads cpu-bound,

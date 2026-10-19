@@ -275,17 +275,16 @@ def tasks_from_tsv(text: str, usage: Mapping[str, StepUsage] | None = None) -> l
     Each row is its own step (there is no separate process/rule column in
     this format). An optional ``usage`` mapping (step name to
     :class:`~pipeprof.tools.usage.StepUsage`, as a tool reader would
-    fill) adds CPU, memory and I/O metrics for the bound and advice analyses.
+    fill) adds CPU, memory and I/O metrics for the bound and advice analyses,
+    through :func:`apply_usage` as for every other source.
     """
     reader = csv.DictReader(io.StringIO(text), delimiter="\t")
-    usage = usage or {}
     tasks: list[Task] = []
     for row in reader:
         name = row["name"]
         start_text, end_text = row.get("start"), row.get("end")
         start = float(start_text) if start_text not in (None, "", "-") else None
         end = float(end_text) if end_text not in (None, "", "-") else None
-        u = usage.get(name)
         tasks.append(
             Task(
                 name=name,
@@ -296,13 +295,10 @@ def tasks_from_tsv(text: str, usage: Mapping[str, StepUsage] | None = None) -> l
                 attempt=1,
                 cpus=None,
                 status="COMPLETED",
-                cpu_percent=u.cpu_percent if u else None,
-                max_rss_bytes=u.max_rss_bytes if u else None,
-                mem_request_bytes=None,
-                read_bytes=u.read_bytes if u else None,
-                write_bytes=u.write_bytes if u else None,
             )
         )
+    if usage:
+        apply_usage(tasks, usage)
     return tasks
 
 
