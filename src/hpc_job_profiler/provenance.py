@@ -7,6 +7,7 @@ passwords that happen to sit in the environment never reach a log file.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import platform
 import shutil
@@ -39,6 +40,8 @@ ENV_ALLOW_NAMES = (
 )
 #: Substrings that mark a variable as secret even when its prefix is allowed.
 ENV_DENY_MARKERS = ("TOKEN", "SECRET", "PASSWORD", "PASSWD", "KEY", "CREDENTIAL", "AUTH")
+
+_log = logging.getLogger(__name__)
 
 DEFAULT_TOOLS = ("bcftools", "samtools", "nextflow", "snakemake", "sbatch", "sacct")
 
@@ -121,6 +124,7 @@ def git_state(path: str | Path = ".") -> dict[str, str | bool | None]:
     state: dict[str, str | bool | None] = {"commit": None, "branch": None, "dirty": None}
     git = shutil.which("git")
     if git is None:
+        _log.debug("git not found on PATH; provenance has no commit")
         return state
 
     def run(args: Sequence[str]) -> str | None:
@@ -132,7 +136,8 @@ def git_state(path: str | Path = ".") -> dict[str, str | bool | None]:
                 timeout=10,
                 check=False,
             )
-        except (OSError, subprocess.TimeoutExpired):
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            _log.debug("git %s failed: %s", args[0], exc)
             return None
         return result.stdout.strip() if result.returncode == 0 else None
 

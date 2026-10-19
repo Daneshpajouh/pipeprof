@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import io
 import json
+import logging
+import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -84,8 +87,29 @@ def test_environment_allow_list_drops_secrets() -> None:
     assert safe_environment(env) == {"CONDA_DEFAULT_ENV": "bio", "SLURM_JOB_ID": "77"}
 
 
-def test_git_state(tmp_path: Path) -> None:
+HAVE_GIT = shutil.which("git") is not None
+
+
+def test_git_state_without_git(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    with caplog.at_level(logging.DEBUG, logger="hpc_job_profiler.provenance"):
+        assert git_state(tmp_path) == {"commit": None, "branch": None, "dirty": None}
+    assert "git not found" in caplog.text
+    prov = capture(inputs=[], tools=["git"], git_path=tmp_path).to_dict()
+    assert prov["git"]["commit"] is None and prov["tool_versions"]["git"] is None
+
+
+def test_git_state_with_broken_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A PATH entry that names git but cannot be executed.
+    monkeypatch.setattr(shutil, "which", lambda name: str(tmp_path / "no-such-git"))
     assert git_state(tmp_path)["commit"] is None
+
+
+@pytest.mark.skipif(not HAVE_GIT, reason="git is not installed on this host")
+def test_git_state_in_and_outside_a_repository(tmp_path: Path) -> None:
+    assert git_state(tmp_path)["commit"] is None  # not a repository
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / "f").write_text("1")
     subprocess.run(["git", "-C", str(tmp_path), "add", "f"], check=True)
@@ -109,10 +133,14 @@ def test_git_state(tmp_path: Path) -> None:
     assert state["dirty"] is False
 
 
-def test_tools_and_capture(tmp_path: Path) -> None:
+def test_tool_version_with_a_fake_tool(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    tool = tmp_path / "faketool"
+    tool.write_text("#!/bin/sh\necho 'faketool 9.9.1'\necho 'second line'\n")
+    tool.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
+    assert tool_version("faketool") == "faketool 9.9.1"
     assert tool_version("surely-not-a-tool-hjp") is None
-    assert tool_version("git") is not None
     assert package_versions(["psutil", "not-a-package-hjp"])["not-a-package-hjp"] is None
-    prov = capture(inputs=[], tools=["git"], git_path=tmp_path).to_dict()
-    assert prov["tool_versions"]["git"]
+    prov = capture(inputs=[], tools=["faketool"], git_path=tmp_path).to_dict()
+    assert prov["tool_versions"]["faketool"] == "faketool 9.9.1"
     assert prov["memory_total_bytes"] > 0

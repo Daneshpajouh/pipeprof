@@ -1,7 +1,7 @@
 # Draft for conda-forge staged-recipes. Fill sha256 from the PyPI sdist after
-# the first release (`pip download hpc-job-profiler==1.0.0 --no-binary :all:`).
+# the first release (`pip download hpc-job-profiler==1.0.1 --no-binary :all:`).
 {% set name = "hpc-job-profiler" %}
-{% set version = "1.0.0" %}
+{% set version = "1.0.1" %}
 
 package:
   name: {{ name }}

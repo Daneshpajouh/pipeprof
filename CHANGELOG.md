@@ -2,6 +2,14 @@
 
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## 1.0.1 (2026-10-19)
+
+- Tests no longer need git on the host: the git checks use a fake or broken
+  `git` on `PATH` and skip the real-repository case when git is absent.
+  Found by a run in a `python:3.12-slim` container without git, where two
+  tests failed. The library already returned `commit: None` there.
+- `provenance.git_state` logs at debug level when git is missing or fails.
+
 ## 1.0.0 (2026-10-19)
 
 First release.
