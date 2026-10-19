@@ -64,28 +64,38 @@ def parse_seff(text: str, step: str | None = None) -> StepUsage:
     if _RUNNING_WARNING_RE.search(text):
         notes.append("efficiency statistics may be misleading for a RUNNING job")
 
+    cores: int | None = None
     cores_match = _CORES_RE.search(text)
     if cores_match:
-        notes.append(f"cores: {cores_match.group(1)}")
+        cores = int(cores_match.group(1))
     else:
         nodes_match = _NODES_RE.search(text)
         cores_per_node_match = _CORES_PER_NODE_RE.search(text)
         if cores_per_node_match:
             nodes = int(nodes_match.group(1)) if nodes_match else 1
-            notes.append(f"cores: {nodes * int(cores_per_node_match.group(1))}")
+            cores = nodes * int(cores_per_node_match.group(1))
+    if cores is not None:
+        notes.append(f"cores: {cores}")
 
     # Slurm reports one CPU time total, not split into user and system; keep
     # it as user_s and leave sys_s unset rather than guess at a split.
     cpu_utilized_match = _CPU_UTILIZED_RE.search(text)
     user_s = parse_slurm_duration(cpu_utilized_match.group(1)) if cpu_utilized_match else None
 
-    # CPU Efficiency is CPU time over (cores x walltime), not GNU time's
-    # (user+sys)/wall for one core, but both describe how fully the job used
-    # what it was given, so it fills the same cpu_percent slot.
+    # CPU Efficiency is CPU time over (cores x walltime): a share of all
+    # allocated cores. Everywhere else cpu_percent is percent of one core (GNU
+    # time, Nextflow %cpu; bound.label_step divides by CPUs requested), so the
+    # efficiency is multiplied by the cores. Without a core count that cannot
+    # be done, and cpu_percent stays unset rather than mixing the two meanings.
     cpu_percent: float | None = None
     cpu_efficiency_match = _CPU_EFFICIENCY_RE.search(text)
     if cpu_efficiency_match:
-        cpu_percent = float(cpu_efficiency_match.group(1))
+        efficiency = float(cpu_efficiency_match.group(1))
+        if cores is not None:
+            cpu_percent = efficiency * cores
+            notes.append(f"CPU efficiency: {efficiency}% of {cores} allocated cores")
+        else:
+            notes.append(f"CPU efficiency: {efficiency}% of an unknown number of cores")
         notes.append(f"CPU Efficiency base: {cpu_efficiency_match.group(2)} core-walltime")
 
     wallclock_match = _WALLCLOCK_RE.search(text)

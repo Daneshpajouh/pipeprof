@@ -14,7 +14,7 @@ def test_completed(data: Path) -> None:
     assert usage.exit_code == 0
     assert usage.user_s == pytest.approx(2400.0)
     assert usage.wall_s == pytest.approx(720.0)
-    assert usage.cpu_percent == pytest.approx(83.33)
+    assert usage.cpu_percent == pytest.approx(83.33 * 4)  # per one core
     assert usage.max_rss_bytes == round(512.0 * 1024 * 1024)
     assert "state: COMPLETED" in usage.notes
     assert "cores: 4" in usage.notes
@@ -24,7 +24,7 @@ def test_completed(data: Path) -> None:
 def test_running_job(data: Path) -> None:
     usage = parse_seff((data / "tools" / "seff_running.txt").read_text())
     assert usage.exit_code is None
-    assert usage.cpu_percent == pytest.approx(45.83)
+    assert usage.cpu_percent == pytest.approx(45.83 * 8)  # per one core
     assert usage.wall_s == pytest.approx(1 * 86400 + 3 * 3600)
     assert usage.user_s == pytest.approx(1 * 86400 + 2 * 3600)
     assert usage.max_rss_bytes == 0
@@ -48,3 +48,19 @@ def test_array_job(data: Path) -> None:
 def test_not_seff_output() -> None:
     with pytest.raises(ValueError, match="not a seff report"):
         parse_seff("JobID|State|Elapsed\n123|COMPLETED|00:01:00\n")
+
+
+def test_cpu_percent_is_per_one_core(data: Path) -> None:
+    # seff's CPU Efficiency is a share of all allocated cores (83.33% of 4);
+    # StepUsage.cpu_percent is percent of one core, as GNU time and the
+    # runners report it, so it is efficiency x cores: 3.33 cores busy.
+    usage = parse_seff((data / "tools" / "seff_completed.txt").read_text())
+    assert usage.cpu_percent == pytest.approx(83.33 * 4)
+    assert "CPU efficiency: 83.33% of 4 allocated cores" in usage.notes
+    # Without a core count the per-core figure is unknown, not guessed.
+    no_cores = (data / "tools" / "seff_completed.txt").read_text().replace(
+        "Cores per node: 4\n", ""
+    )
+    usage = parse_seff(no_cores)
+    assert usage.cpu_percent is None
+    assert any(n.startswith("CPU efficiency: 83.33%") for n in usage.notes)
