@@ -5,6 +5,7 @@ can treat GNU time, BSD time, psrecord and seff output the same way. py-spy
 speedscope profiles are function-level and have their own result type.
 """
 
+from pipeprof.tools.gnu_time import parse_gnu_time
 from pipeprof.tools.usage import StepUsage
 
-__all__ = ["StepUsage"]
+__all__ = ["StepUsage", "parse_gnu_time"]

@@ -17,4 +17,8 @@ files were produced by a local run while building this repository.
 | `snakemake_macos_run/` | real: benchmarks and run log from `examples/snakemake_clinvar` on macOS, 2026-10-19 | Snakemake wrote `NA` for every memory and CPU column, and the `stats` job for chrX failed inside Snakemake's own benchmark code |
 | `snakemake_linux/sort_vcf_chr1.tsv` | hand-written, plain benchmark columns with values as Snakemake writes them on Linux | MiB to bytes conversion, `s` against `h:m:s` |
 
+| `tools/gnu_time_ok.txt` | hand-written, GNU time info manual `-v` section ([gnu.org/software/time](https://www.gnu.org/software/time/), no Linux `/usr/bin/time -v` on this Mac to run for real) | a clean run, `m:ss.ss` elapsed, known CPU percent, file system input/output block counts |
+| `tools/gnu_time_long.txt` | hand-written, same manual | `h:mm:ss` elapsed, a non-zero exit status |
+| `tools/gnu_time_killed.txt` | hand-written, same manual | the program's own traceback above the report, `Percent of CPU this job got: ?%`, "Command terminated by signal 9" in place of "Exit status" |
+
 In `snakemake_macos_run/` the repository path is replaced with `REPO`, the data folder with `DATA_DIR` and the macOS temporary folder with `TMPDIR`; nothing else was edited.
