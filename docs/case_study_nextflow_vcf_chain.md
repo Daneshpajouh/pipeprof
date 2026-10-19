@@ -39,7 +39,7 @@ On a before run (wall time 10.5 s from first submit to last completion):
 | SPLIT | 4.0 s | 16.6 s (8 tasks) | cpu-bound |
 | CONCAT | 3.6 s | 3.6 s (1 task) | cpu-bound |
 | SORT | 2.0 s | 7.7 s (8 tasks) | cpu-bound |
-| STATS | 0.5 s | 1.4 s (8 tasks) | unknown |
+| STATS | 0.5 s | 1.4 s (8 tasks) | cpu-bound |
 
 Parallel efficiency averaged 69% of 4 CPUs, with 3.4 s below 50% (the
 `CONCAT` tail, one task on four CPUs). The recommendation: work on `SPLIT`
