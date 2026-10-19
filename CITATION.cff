@@ -6,7 +6,7 @@ type: software
 authors:
   - family-names: "Daneshpajouh"
     given-names: "Amir"
-version: "1.0.1"
+version: "1.1.0"
 date-released: "2026-10-19"
 license: Apache-2.0
 repository-code: "https://github.com/Daneshpajouh/pipeprof"

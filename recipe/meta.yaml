@@ -1,7 +1,7 @@
 # Draft for conda-forge staged-recipes. Fill sha256 from the PyPI sdist after
-# the first release (`pip download pipeprof==1.0.1 --no-binary :all:`).
+# the first release (`pip download pipeprof==1.1.0 --no-binary :all:`).
 {% set name = "pipeprof" %}
-{% set version = "1.0.1" %}
+{% set version = "1.1.0" %}
 
 package:
   name: {{ name }}
