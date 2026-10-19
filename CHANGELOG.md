@@ -85,7 +85,9 @@ Versions follow [Semantic Versioning](https://semver.org/).
   as in `pipeprof calibrate`, not 0.3 of the requested cores. A
   single-threaded tool given 4 CPUs at full use is CPU-bound on one core,
   and the thread advice says more threads will not help because it uses one.
-  Evidence lines give cores busy and their share of the request.
+  Evidence lines give cores busy and their share of the request. Label and
+  advice read cores busy, the request and the cores used from one helper
+  over the same tasks, so they state the same numbers.
 - `pipeprof analyze` and `pipeprof report` on standard Snakemake benchmarks
   (no `--benchmark-extended`): each file is matched to its log job by the
   `benchmark:` path, so log times and requests attach to the right job. Before,

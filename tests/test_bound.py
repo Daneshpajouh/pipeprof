@@ -126,3 +126,37 @@ def test_waiting_matches_calibrate() -> None:
     m_busy = Measurement("x", 0, 10.0, 4.0, 0.0, 1, 1, 1, None, None, 0, 0, 1, 0.05)
     assert waiting_runs([RunPoint(0.1, 1, "p", 1, 1, m_busy)]) == []
     assert label_step("step", [task(cpu_percent=40.0, cpus=4)]).label != "mostly waiting"
+
+
+def test_label_and_advice_state_the_same_cpu_numbers() -> None:
+    from pipeprof.advise import bound_thread_advice
+
+    # Three tasks asking for 1, 1 and 16 CPUs, each keeping one core busy:
+    # 3 cores busy of 18 requested, a 17% share, whichever line states it.
+    tasks = [task(cpu_percent=100.0, cpus=c) for c in (1, 1, 16)]
+    label = label_step("step", tasks)
+    assert label.label == "cpu-bound"
+    assert label.cores_busy == 1.0 and label.cpus_requested == 6.0
+    assert "CPU use 1.00 cores busy over 3 task(s), 17% of 6 requested" in label.evidence
+    assert any("on about 1 of 6 requested cores" in e for e in label.evidence)
+    advice = bound_thread_advice(label)
+    assert advice is not None
+    assert "keeps 1.0 of 6 requested cores busy" in advice.basis
+    assert advice.basis.endswith("uses about 1")
+
+    # One task asking for 4 CPUs at 140% of one core: it uses about 2 cores,
+    # in the label and in the advice alike.
+    label = label_step("step", [task(cpu_percent=140.0, cpus=4)])
+    assert any("on about 2 of 4 requested cores" in e for e in label.evidence)
+    advice = bound_thread_advice(label)
+    assert advice is not None and advice.basis.endswith("uses about 2")
+
+
+def test_request_share_needs_a_request_on_every_measured_task() -> None:
+    # One task with a 4-CPU request, one with none: the request of the step is
+    # not known, so no share of it is stated.
+    tasks = [task(cpu_percent=100.0, cpus=4), task(cpu_percent=100.0, cpus=None)]
+    label = label_step("step", tasks)
+    assert label.cores_busy == 1.0
+    assert label.cpus_requested is None
+    assert label.evidence[0] == "CPU use 1.00 cores busy over 2 task(s)"

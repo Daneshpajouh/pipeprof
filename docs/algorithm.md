@@ -238,6 +238,15 @@ request, then one core), then I/O-bound, then mostly waiting, then unknown. A st
 measurements is "unknown" and says so, rather than guessing from whichever
 numbers happen to be present.
 
+CPU use is read once per step by `bound.cpu_use`, and both the label and the
+thread advice take their numbers from it. Cores busy is the mean over the
+tasks with CPU measured; the request is the mean over the same tasks, and is
+left unknown unless every one of them has a request. The share of the request
+is cores busy over that mean request (tasks asking for 1, 1 and 16 CPUs at
+one core each: 1.00 cores busy of 6, a 17% share). The cores a tool uses are
+`ceil(cores busy - 0.15)`, at least 1, the rounding `pipeprof calibrate` uses
+for its CPU request: one task at 140% of one core uses about 2.
+
 ### Recommendations
 
 Which critical-path step to speed up first is whichever step holds the most

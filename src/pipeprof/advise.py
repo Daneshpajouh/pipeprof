@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from pipeprof.bottleneck import CriticalPath
-from pipeprof.bound import CPU_BOUND_THRESHOLD, BoundLabel
+from pipeprof.bound import CPU_BOUND_THRESHOLD, BoundLabel, cores_used
 from pipeprof.timeline import Task
 
 # Below this, doubling the threads is not worth it: going from 2 to 4 threads
@@ -151,7 +151,7 @@ def bound_thread_advice(label: BoundLabel) -> ThreadAdvice | None:
             speedup=1.0,
             basis=f"{label.step} keeps {label.cores_busy:.1f} of {label.cpus_requested:g} "
             "requested cores busy; more threads will not help, because it uses about "
-            f"{max(1, round(label.cores_busy))}",
+            f"{cores_used(label.cores_busy)}",
         )
     if label.label not in {"io-bound", "mostly waiting"}:
         return None

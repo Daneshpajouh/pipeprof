@@ -44,6 +44,50 @@ IO_BOUND_BYTES_PER_S = 20 * 1024 * 1024
 MEM_BOUND_FRACTION = 0.8
 
 
+@dataclass(frozen=True)
+class CpuUse:
+    """Cores kept busy and CPUs requested, over one set of tasks: those with CPU measured.
+
+    The label and the thread advice both read CPU use from here, so they never
+    state different numbers for the same step.
+    """
+
+    #: Mean cores kept busy (percent of one core / 100).
+    cores_busy: float
+    #: How many tasks had CPU measured.
+    tasks: int
+    #: Mean CPUs requested over the same tasks; ``None`` unless every one has a request.
+    cpus_requested: float | None
+
+    @property
+    def share(self) -> float | None:
+        """Cores busy over CPUs requested, when the request is known."""
+        if not self.cpus_requested:
+            return None
+        return self.cores_busy / self.cpus_requested
+
+
+def cores_used(cores_busy: float) -> int:
+    """Whole cores a tool uses when it keeps ``cores_busy`` busy: ``ceil(cores_busy - 0.15)``.
+
+    At least 1. The same rounding ``pipeprof calibrate`` uses for its CPU
+    request: up to 0.15 of a core is sampling noise and start-up, more is a
+    core in use.
+    """
+    return max(1, math.ceil(cores_busy - 0.15))
+
+
+def cpu_use(tasks: Sequence[Task]) -> CpuUse | None:
+    """CPU use of a step's tasks, or ``None`` when none had CPU measured."""
+    measured = [t for t in tasks if t.cpu_percent is not None]
+    if not measured:
+        return None
+    cores = sum(t.cpu_percent or 0.0 for t in measured) / 100.0 / len(measured)
+    requests = [t.cpus for t in measured if t.cpus]
+    requested = sum(requests) / len(requests) if len(requests) == len(measured) else None
+    return CpuUse(cores, len(measured), requested)
+
+
 @dataclass
 class BoundLabel:
     """A step's label and the evidence it rests on."""
@@ -59,11 +103,7 @@ class BoundLabel:
 
 def label_step(name: str, tasks: Sequence[Task]) -> BoundLabel:
     """Label one step from its tasks' measured rates against their requests."""
-    cores = [t.cpu_percent / 100.0 for t in tasks if t.cpu_percent is not None]
-    cpu_shares = [
-        t.cpu_percent / 100.0 / t.cpus for t in tasks if t.cpu_percent is not None and t.cpus
-    ]
-    requested = [float(t.cpus) for t in tasks if t.cpu_percent is not None and t.cpus]
+    cpu = cpu_use(tasks)
     io_rates = [
         ((t.read_bytes or 0) + (t.write_bytes or 0)) / t.wall_s
         for t in tasks
@@ -75,12 +115,12 @@ def label_step(name: str, tasks: Sequence[Task]) -> BoundLabel:
         if t.max_rss_bytes is not None and t.mem_request_bytes
     ]
 
-    if not cores and not io_rates and not mem_fracs:
+    if cpu is None and not io_rates and not mem_fracs:
         return BoundLabel(name, "unknown", ["no CPU, I/O or memory measurements for this step"])
 
-    avg_cores = sum(cores) / len(cores) if cores else None
-    avg_share = sum(cpu_shares) / len(cpu_shares) if cpu_shares else None
-    avg_cpus = sum(requested) / len(requested) if requested else None
+    avg_cores = cpu.cores_busy if cpu else None
+    avg_share = cpu.share if cpu else None
+    avg_cpus = cpu.cpus_requested if cpu else None
     avg_io = sum(io_rates) / len(io_rates) if io_rates else None
     max_mem = max(mem_fracs) if mem_fracs else None
 
@@ -88,8 +128,8 @@ def label_step(name: str, tasks: Sequence[Task]) -> BoundLabel:
         return BoundLabel(name, label, [*evidence, *why], avg_cores, avg_cpus)
 
     evidence: list[str] = []
-    if avg_cores is not None:
-        line = f"CPU use {avg_cores:.2f} cores busy over {len(cores)} task(s)"
+    if cpu is not None:
+        line = f"CPU use {cpu.cores_busy:.2f} cores busy over {cpu.tasks} task(s)"
         if avg_share is not None and avg_cpus is not None:
             line += f", {avg_share:.0%} of {avg_cpus:g} requested"
         evidence.append(line)
@@ -110,7 +150,7 @@ def label_step(name: str, tasks: Sequence[Task]) -> BoundLabel:
         # Computing, on fewer cores than requested: the tool uses about this many.
         why = f"at least {CPU_BOUND_THRESHOLD:.0%} of one core busy"
         if avg_cpus is not None:
-            why += f", on about {math.ceil(avg_cores - 0.15)} of {avg_cpus:g} requested cores"
+            why += f", on about {cores_used(avg_cores)} of {avg_cpus:g} requested cores"
         return make("cpu-bound", [why])
     if avg_io is not None and avg_io >= IO_BOUND_BYTES_PER_S:
         return make(
