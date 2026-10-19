@@ -42,10 +42,16 @@ def test_apply_usage_prefers_reported_cpu_percent() -> None:
 
 
 def test_apply_usage_no_wall_time_leaves_cpu_unknown() -> None:
+    # Neither the task nor the tool has a wall time: the share stays unknown.
     tasks = [_task("A (1)")]
+    tasks[0].start = tasks[0].end = None
     usage = {"A (1)": StepUsage(source="bsd_time", step="A (1)", user_s=1.0, sys_s=0.0)}
     apply_usage(tasks, usage)
     assert tasks[0].cpu_percent is None
+    # The task's own 10 s wall time is enough when the tool has none.
+    timed = [_task("A (1)")]
+    apply_usage(timed, usage)
+    assert timed[0].cpu_percent == 10.0
 
 
 def test_macos_trace_has_times_but_no_metrics(data: Path) -> None:
@@ -99,3 +105,19 @@ def test_analyze_real_macos_run_with_tool_readings(data: Path, tmp_path: Path) -
     # the macOS trace alone would leave every label unknown.
     assert labels["SPLIT"] == "cpu-bound"
     assert report["advice"]["first_step"]["step"] == "SPLIT"
+
+
+def test_apply_usage_cpu_share_over_the_task_wall_time() -> None:
+    # The task ran 20 s by the runner's clock; the tool saw 10 s of it. The
+    # docstring's rule: the share is over the task's wall time when it has one.
+    tasks = [_task("A (1)")]
+    tasks[0].end = 20.0
+    usage = {"A (1)": StepUsage(source="bsd_time", step="A (1)", wall_s=10.0, user_s=4.0,
+                                sys_s=1.0)}
+    apply_usage(tasks, usage)
+    assert tasks[0].cpu_percent == 25.0
+    # No times on the task: the tool's own wall time is used.
+    untimed = [Task(name="A (1)", step="A", submit=None, start=None, end=None, attempt=1,
+                    cpus=1, status="COMPLETED")]
+    apply_usage(untimed, usage)
+    assert untimed[0].cpu_percent == 50.0

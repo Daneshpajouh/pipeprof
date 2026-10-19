@@ -311,10 +311,11 @@ def apply_usage(tasks: Sequence[Task], usage: Mapping[str, StepUsage]) -> int:
 
     A runner's own value wins over a tool's: the tool reading only fills
     fields the runner left empty (Nextflow on macOS records no CPU, memory or
-    I/O columns, so there every metric comes from the tool). A tool that ran
-    with no wall time of its own gives no CPU share, so ``cpu_percent`` is
-    derived from user plus system time over the task's wall time only when
-    the tool did not report it. Returns how many tasks matched a reading.
+    I/O columns, so there every metric comes from the tool). When the tool
+    did not report ``cpu_percent``, it is derived from the tool's user plus
+    system time over the task's wall time, or over the tool's own wall time
+    when the task has no start and end. With neither, it stays unknown.
+    Returns how many tasks matched a reading.
     """
     matched = 0
     for task in tasks:
@@ -325,8 +326,12 @@ def apply_usage(tasks: Sequence[Task], usage: Mapping[str, StepUsage]) -> int:
         if task.cpu_percent is None:
             if u.cpu_percent is not None:
                 task.cpu_percent = u.cpu_percent
-            elif u.cpu_s is not None and u.wall_s:
-                task.cpu_percent = 100.0 * u.cpu_s / u.wall_s
+            else:
+                # The task's wall time is the runner's span for this task, the
+                # same span every other metric of the task is read against.
+                wall = task.wall_s or u.wall_s
+                if u.cpu_s is not None and wall:
+                    task.cpu_percent = 100.0 * u.cpu_s / wall
         if task.max_rss_bytes is None:
             task.max_rss_bytes = u.max_rss_bytes
         if task.read_bytes is None:
