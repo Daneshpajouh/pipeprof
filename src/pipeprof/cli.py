@@ -34,6 +34,7 @@ from pipeprof.subsample import InputKind, SubsampleError
 from pipeprof.tail import tail as tail_view
 from pipeprof.timeline import (
     Task,
+    apply_usage,
     load_usage,
     tasks_from_nextflow_trace,
     tasks_from_snakemake,
@@ -438,6 +439,9 @@ def analyze_cmd(
     if not tasks:
         console.print("[red]no tasks found in the given file[/red]")
         raise typer.Exit(2)
+    if usage_map and tsv is None:
+        matched = apply_usage(tasks, usage_map)
+        console.print(f"Tool readings matched {matched} of {len(tasks)} tasks")
 
     report = analyse(tasks, cpus_available=cpus)
     by_step: dict[str, list[Task]] = {}
@@ -454,6 +458,38 @@ def analyze_cmd(
     )
     typer.echo(md)
     console.print(f"Wrote analysis.md and analysis.json to {outdir}")
+
+
+_USAGE_READERS = {
+    "gnu-time": "pipeprof.tools.gnu_time:parse_gnu_time",
+    "bsd-time": "pipeprof.tools.bsd_time:parse_bsd_time",
+    "psrecord": "pipeprof.tools.psrecord:parse_psrecord",
+    "seff": "pipeprof.tools.seff:parse_seff",
+}
+
+
+@app.command("usage")
+def usage_cmd(
+    tool: Annotated[str, typer.Argument(help="One of: " + ", ".join(_USAGE_READERS))],
+    path: Annotated[Path, typer.Argument(help="The tool's output file.")],
+    step: Annotated[
+        str, typer.Option(help="Task name the reading belongs to, as the runner names it.")
+    ],
+) -> None:
+    """Print one StepUsage JSON line from a tool's output, for pipeprof analyze --usage."""
+    import importlib
+
+    if tool not in _USAGE_READERS:
+        console.print(f"[red]unknown tool {tool!r}; use one of {', '.join(_USAGE_READERS)}[/red]")
+        raise typer.Exit(2)
+    module_name, func_name = _USAGE_READERS[tool].split(":")
+    reader = getattr(importlib.import_module(module_name), func_name)
+    try:
+        reading = reader(path.read_text(encoding="utf-8"), step=step)
+    except ValueError as exc:
+        console.print(f"[red]{path}: {exc}[/red]")
+        raise typer.Exit(1) from exc
+    typer.echo(json.dumps(dataclasses.asdict(reading), sort_keys=True))
 
 
 @app.command("provenance")

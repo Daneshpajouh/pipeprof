@@ -1,0 +1,22 @@
+Writing to .NfWbnJ
+Merging 1 temporary files
+Done
+Cleaning
+        1.10 real         0.99 user         0.04 sys
+            47284224  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                3170  page reclaims
+                   3  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  24  voluntary context switches
+                2396  involuntary context switches
+         11677531282  instructions retired
+          3707286849  cycles elapsed
+            42631744  peak memory footprint

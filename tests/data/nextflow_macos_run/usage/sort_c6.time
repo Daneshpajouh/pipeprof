@@ -1,0 +1,22 @@
+Writing to .vPdsbN
+Merging 1 temporary files
+Done
+Cleaning
+        0.69 real         0.64 user         0.02 sys
+            34570240  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                2394  page reclaims
+                   3  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  14  voluntary context switches
+                 928  involuntary context switches
+          7518909394  instructions retired
+          2407131725  cycles elapsed
+            29884944  peak memory footprint

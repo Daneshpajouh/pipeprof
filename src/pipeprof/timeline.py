@@ -296,6 +296,36 @@ def tasks_from_tsv(text: str, usage: Mapping[str, StepUsage] | None = None) -> l
     return tasks
 
 
+def apply_usage(tasks: Sequence[Task], usage: Mapping[str, StepUsage]) -> int:
+    """Fill a task's missing metrics from the tool reading for the same task name.
+
+    A runner's own value wins over a tool's: the tool reading only fills
+    fields the runner left empty (Nextflow on macOS records no CPU, memory or
+    I/O columns, so there every metric comes from the tool). A tool that ran
+    with no wall time of its own gives no CPU share, so ``cpu_percent`` is
+    derived from user plus system time over the task's wall time only when
+    the tool did not report it. Returns how many tasks matched a reading.
+    """
+    matched = 0
+    for task in tasks:
+        u = usage.get(task.name)
+        if u is None:
+            continue
+        matched += 1
+        if task.cpu_percent is None:
+            if u.cpu_percent is not None:
+                task.cpu_percent = u.cpu_percent
+            elif u.cpu_s is not None and u.wall_s:
+                task.cpu_percent = 100.0 * u.cpu_s / u.wall_s
+        if task.max_rss_bytes is None:
+            task.max_rss_bytes = u.max_rss_bytes
+        if task.read_bytes is None:
+            task.read_bytes = u.read_bytes
+        if task.write_bytes is None:
+            task.write_bytes = u.write_bytes
+    return matched
+
+
 def load_usage(paths: Sequence[Path]) -> dict[str, StepUsage]:
     """Read ``StepUsage`` JSON lines files into a mapping by step name.
 

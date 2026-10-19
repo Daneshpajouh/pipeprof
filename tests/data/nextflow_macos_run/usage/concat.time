@@ -1,0 +1,27 @@
+Checking the headers and starting positions of 8 files
+Concatenating c1.sorted.vcf.gz	0.874750 seconds
+Concatenating c2.sorted.vcf.gz	0.618441 seconds
+Concatenating c3.sorted.vcf.gz	0.479236 seconds
+Concatenating c4.sorted.vcf.gz	0.422163 seconds
+Concatenating c5.sorted.vcf.gz	0.348124 seconds
+Concatenating c6.sorted.vcf.gz	0.326909 seconds
+Concatenating c7.sorted.vcf.gz	0.252784 seconds
+Concatenating c8.sorted.vcf.gz	0.178644 seconds
+        3.51 real         3.33 user         0.10 sys
+            12959744  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                1076  page reclaims
+                   3  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  22  voluntary context switches
+                5138  involuntary context switches
+         26354681503  instructions retired
+         12366953611  cycles elapsed
+             8258040  peak memory footprint

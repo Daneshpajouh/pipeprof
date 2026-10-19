@@ -1,0 +1,22 @@
+Writing to .ZHfOZ0
+Merging 1 temporary files
+Done
+Cleaning
+        1.99 real         1.78 user         0.07 sys
+            76775424  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                4970  page reclaims
+                   3  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  23  voluntary context switches
+                3217  involuntary context switches
+         20798471285  instructions retired
+          6649149999  cycles elapsed
+            72122944  peak memory footprint

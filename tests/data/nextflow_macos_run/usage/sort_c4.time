@@ -1,0 +1,22 @@
+Writing to .6xXiNK
+Merging 1 temporary files
+Done
+Cleaning
+        0.97 real         0.85 user         0.03 sys
+            43646976  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                2948  page reclaims
+                   3  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  20  voluntary context switches
+                1492  involuntary context switches
+         10010633695  instructions retired
+          3171011926  cycles elapsed
+            38961680  peak memory footprint

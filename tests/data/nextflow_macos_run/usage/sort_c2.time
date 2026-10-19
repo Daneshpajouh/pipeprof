@@ -1,0 +1,22 @@
+Writing to .tiiyuK
+Merging 1 temporary files
+Done
+Cleaning
+        1.45 real         1.30 user         0.05 sys
+            58261504  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+                3841  page reclaims
+                   3  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                  29  voluntary context switches
+                2661  involuntary context switches
+         14991331404  instructions retired
+          4867093533  cycles elapsed
+            53592616  peak memory footprint
