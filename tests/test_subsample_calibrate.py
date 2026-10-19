@@ -283,3 +283,29 @@ def test_flat_memory_is_marked_and_bounded() -> None:
     assert mem.upper == pytest.approx(70.7e6 * 10)
     assert mem.to_dict()["basis"] == "flat"
     assert preds["cpu_s"].basis == "fitted"
+
+
+def test_waiting_runs_use_the_cpu_model() -> None:
+    from pipeprof.calibrate import predict_metrics, waiting_runs
+
+    # The two Narval runs of one bcftools sort: 15.15 s wall on 3.56 s CPU on
+    # one node, 4.27 s on 3.25 s on another.
+    slow = _run(0.1, 15.15, 3.56, 80e6, repeat=1)
+    fast = _run(0.1, 4.27, 3.25, 80e6, repeat=2)
+    assert waiting_runs([slow, fast]) == [slow]
+    # Synthetic CPU-busy runs at two more sizes, so CPU can be fitted.
+    runs = [_run(0.05, 2.0, 1.7, 60e6), slow, fast, _run(0.2, 8.1, 6.8, 120e6)]
+    preds = predict_metrics(runs, 1e9, "bytes")
+    wall, cpu = preds["wall_s"], preds["cpu_s"]
+    assert wall.basis == "mostly waiting"
+    assert wall.observed_range == (2.0, 15.15)
+    worst = 3.56 / 15.15
+    assert wall.point == pytest.approx(cpu.point / worst)
+    assert wall.upper == pytest.approx(cpu.upper / worst)
+    assert wall.lower <= wall.point <= wall.upper
+    assert "mostly waiting" in wall.note and "15.15 s on 3.56 s CPU" in wall.note
+    assert "2.00 to 15.15 s" in wall.note
+
+    busy_runs = [_run(0.05, 2.0, 1.7, 60e6), fast, _run(0.2, 8.1, 6.8, 120e6)]
+    busy = predict_metrics(busy_runs, 1e9, "bytes")
+    assert busy["wall_s"].basis == "fitted"

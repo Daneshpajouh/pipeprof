@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from pipeprof.bound import CPU_WAIT_THRESHOLD
 from pipeprof.emit import (
     ResourcePlan,
     make_plan,
@@ -84,7 +85,8 @@ class Prediction:
     upper: float
     level: float
     selection: Selection
-    #: "fitted"; for memory "flat" (no growth seen) or "flat then rising" (hinge fit).
+    #: "fitted"; for memory "flat" (no growth seen) or "flat then rising" (hinge fit);
+    #: for wall time "mostly waiting" (derived from the CPU model, not fitted).
     basis: str = "fitted"
     note: str = ""
     observed_range: tuple[float, float] | None = None
@@ -245,6 +247,61 @@ def cpus_from_runs(points: Sequence[RunPoint], threads: int) -> tuple[int, float
     return max(1, min(threads, math.ceil(busiest - 0.15))), busiest
 
 
+def cores_busy(point: RunPoint) -> float:
+    """CPU seconds per wall second of one run."""
+    m = point.measurement
+    return m.cpu_s / m.wall_s if m.wall_s > 0 else 0.0
+
+
+def waiting_runs(points: Sequence[RunPoint]) -> list[RunPoint]:
+    """Runs that kept under ``CPU_WAIT_THRESHOLD`` of one core busy: mostly waiting.
+
+    This is the threshold ``pipeprof analyze`` uses for its "mostly waiting" label,
+    so both commands call the same runs waiting. It is a share of one core, not
+    of ``--threads``: a single-threaded tool given four threads keeps one core
+    busy and is not waiting. Under 0.3 the run spent more than 70 percent of
+    its wall time (wall above 3.3 times CPU) on something other than computing,
+    on a cluster usually a shared filesystem.
+    """
+    return [p for p in points if p.measurement.wall_s > 0 and cores_busy(p) < CPU_WAIT_THRESHOLD]
+
+
+def _wall_from_cpu(
+    points: Sequence[RunPoint], cpu: Prediction, waiting: Sequence[RunPoint]
+) -> Prediction:
+    """Wall time from the CPU prediction and the measured CPU/wall ratios.
+
+    How long a run waits depends on the filesystem's load at that moment, not
+    on input size, so a fit of wall time on such runs is noise (0.06 to
+    1,146 s on a cluster). CPU time does scale with input. The point and
+    upper bound assume the full run waits as much as the worst measured run;
+    the lower bound assumes it waits as little as the best one.
+    """
+    ratios = [cores_busy(p) for p in points if p.measurement.wall_s > 0]
+    worst = max(min(ratios), 1e-6)
+    best = max(ratios)
+    walls = [p.measurement.wall_s for p in points]
+    slowest = min(waiting, key=cores_busy).measurement
+    note = (
+        f"mostly waiting: {len(waiting)} of {len(points)} runs kept under "
+        f"{CPU_WAIT_THRESHOLD:.0%} of one core busy (lowest {worst:.3f}: "
+        f"wall {slowest.wall_s:.2f} s on {slowest.cpu_s:.2f} s CPU), so wall time is not "
+        f"fitted; observed wall {min(walls):.2f} to {max(walls):.2f} s; time is the CPU "
+        f"model divided by the lowest cores-busy ratio"
+    )
+    return Prediction(
+        "wall_s",
+        cpu.point / worst,
+        cpu.lower / best,
+        cpu.upper / worst,
+        cpu.level,
+        cpu.selection,
+        basis="mostly waiting",
+        note=note,
+        observed_range=(min(walls), max(walls)),
+    )
+
+
 def predict_metrics(
     points: Sequence[RunPoint], x_full: float, x_variable: str, level: float = 0.95
 ) -> dict[str, Prediction]:
@@ -277,6 +334,9 @@ def predict_metrics(
         predictions[metric] = Prediction(
             metric, point, lower, upper, level, selection, basis=basis, note=note
         )
+    waiting = waiting_runs(points)
+    if waiting:
+        predictions["wall_s"] = _wall_from_cpu(points, predictions["cpu_s"], waiting)
     return predictions
 
 

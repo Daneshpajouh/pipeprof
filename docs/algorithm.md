@@ -96,6 +96,29 @@ The rule, in `fit.predict_with_plateau` for peak RSS:
 The bound is wide by design: with flat runs at 10 percent of the input it is
 ten times the largest run. That is the price of not having measured growth.
 
+## Wall time on a waiting filesystem
+
+On Lustre the same `bcftools sort` took 15.15 s wall on 3.56 s CPU on one
+node and 4.27 s on 3.25 s on another. A fit of wall time over such runs gave
+an interval of 0.06 to 1,146 s. The wait depends on the filesystem's load at
+that moment, not on input size, so there is nothing to fit.
+
+A run is mostly waiting when it kept under `CPU_WAIT_THRESHOLD` (0.3, the
+constant `pipeprof analyze` uses for the same label) of one core busy, that is
+when wall time is above 3.3 times CPU time: more than 70 percent of the run
+went on something other than computing. The share is of one core, not of
+`--threads`, so a single-threaded tool given four threads is not called
+waiting. The first run above is 0.235 cores busy, the second 0.76.
+
+If any measured run is mostly waiting, `calibrate` does not fit wall time.
+It says so, reports the observed wall range, and derives wall time from the
+CPU model, which does scale with input: point and upper bound are the CPU
+prediction and its upper bound divided by the lowest cores-busy ratio seen
+(the full run waits as much as the worst measured run), the lower bound the
+CPU lower bound divided by the highest. The prediction is marked
+`mostly waiting`. One waiting run is enough, because it shows how far the
+filesystem can stretch a run on that node.
+
 ## From prediction to request
 
     memory request = round_up(upper_95(peak RSS) * 1.2)      steps: 256 MiB, 1 GiB, 4 GiB
