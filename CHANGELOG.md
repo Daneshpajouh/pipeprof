@@ -90,7 +90,9 @@ Versions follow [Semantic Versioning](https://semver.org/).
   (no `--benchmark-extended`): each file is matched to its log job by the
   `benchmark:` path, so log times and requests attach to the right job. Before,
   the file stem was taken as the job ID: times never attached, or attached to
-  another rule's job when stems were numbers.
+  another rule's job when stems were numbers. A file moved away from the
+  logged path is matched by its stem within the rule only when one file and
+  one job share that stem; otherwise it stays unmatched, with a note.
 - `pipeprof analyze` on a Nextflow `-resume` trace: CACHED tasks are no
   longer read as completed now. They are left out of the critical path, idle
   time, efficiency, labels and advice, and counted on their own ("N cached

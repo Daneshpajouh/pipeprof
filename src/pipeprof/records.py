@@ -496,9 +496,17 @@ def match_snakemake_log(
     formats; then by job ID, but only for records whose ID came from a jobid
     column (extended format). A standard benchmark's ID is its file stem, and
     a stem such as ``1`` can equal the job ID of a different rule.
+
+    Last, for files moved away from the paths the log names: by file stem
+    within the same rule, but only when exactly one unmatched file and one
+    unmatched job have that stem and rule. A job then gets that one file (all
+    its rows, which are repeats of the job). When several files or jobs share
+    the stem, nothing tells them apart, so they stay unmatched and each file's
+    records get a note saying why.
     """
     pairs: list[tuple[TaskRecord, SnakemakeJob]] = []
     used: set[int] = set()
+    unmatched: list[SnakemakeJob] = []
     for job in jobs.values():
         found: list[TaskRecord] = []
         if job.benchmark:
@@ -515,21 +523,34 @@ def match_snakemake_log(
                 for r in records
                 if id(r) not in used and not r.job_id_from_file and r.job_id == job.jobid
             ]
-        if not found and job.benchmark:
-            # Files moved away from the paths the log names: fall back to the
-            # stem, and only within the same rule.
-            stem = Path(job.benchmark).stem
-            found = [
-                r
-                for r in records
-                if id(r) not in used
-                and r.job_id_from_file
-                and r.job_id == stem
-                and r.name == job.rule
-            ]
+        if not found:
+            unmatched.append(job)
         for record in found:
             used.add(id(record))
             pairs.append((record, job))
+    by_stem: dict[tuple[str, str], list[SnakemakeJob]] = {}
+    for job in unmatched:
+        if job.benchmark:
+            by_stem.setdefault((Path(job.benchmark).stem, job.rule), []).append(job)
+    for (stem, rule), stem_jobs in by_stem.items():
+        found = [
+            r
+            for r in records
+            if id(r) not in used and r.job_id_from_file and r.job_id == stem and r.name == rule
+        ]
+        files = {r.benchmark_path for r in found}
+        if len(files) == 1 and len(stem_jobs) == 1:
+            for record in found:
+                used.add(id(record))
+                pairs.append((record, stem_jobs[0]))
+            continue
+        note = (
+            f"not matched to a log job: benchmark stem {stem} of rule {rule} fits "
+            f"{len(files)} file(s) and {len(stem_jobs)} log job(s), so no file can be told apart"
+        )
+        for record in found:
+            if note not in record.notes:
+                record.notes.append(note)
     return pairs
 
 

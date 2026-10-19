@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pipeprof.records import SnakemakeJob, TaskRecord
 from pipeprof.timeline import (
     Task,
     load_usage,
@@ -175,3 +176,49 @@ def test_snakemake_standard_benchmarks_match_by_path(tmp_path: Path) -> None:
     assert all(t.cpus == 4 for t in tasks)
     assert all(t.mem_request_bytes == 2000 * 10**6 for t in tasks)
     assert {t.name for t in tasks} == {"sort (job 4)", "sort (job 5)", "sort (job 6)"}
+
+
+def _moved_align(
+    tmp_path: Path, samples: tuple[int, ...]
+) -> tuple[list[TaskRecord], dict[str, SnakemakeJob]]:
+    """Standard benchmarks moved away from the paths the log names, all stem align."""
+    from pipeprof.records import parse_snakemake_benchmark, parse_snakemake_log
+
+    records: list[TaskRecord] = []
+    for sample in samples:
+        path = tmp_path / "moved" / f"S{sample}" / "benchmarks" / "align.txt"
+        path.parent.mkdir(parents=True)
+        path.write_text(
+            "s\th:m:s\tmax_rss\tmax_vms\tmax_uss\tmax_pss\tio_in\tio_out\tmean_load\tcpu_time\n"
+            f"{10 * sample}.0\t0:00:{10 * sample}\t100\t200\t90\t95\t1\t2\t50\t{5 * sample}.0\n"
+        )
+        records += parse_snakemake_benchmark(path.read_text(), path)
+    lines = []
+    for jobid in samples:
+        lines += [
+            "rule align:",
+            f"    benchmark: results/S{jobid}/benchmarks/align.txt",
+            f"    jobid: {jobid}",
+            f"    threads: {jobid + 1}",
+            "",
+            f"Finished job {jobid}.",
+        ]
+    return records, parse_snakemake_log("\n".join(lines) + "\n")
+
+
+def test_snakemake_stem_fallback_needs_a_unique_match(tmp_path: Path) -> None:
+    from pipeprof.records import apply_snakemake_log, match_snakemake_log
+
+    records, jobs = _moved_align(tmp_path, (1, 2, 3))
+    assert len(records) == 3 and len(jobs) == 3
+    # Three files share the stem align for rule align: no file can be told
+    # apart, so none is matched, and each says why.
+    assert match_snakemake_log(records, jobs) == []
+    apply_snakemake_log(records, jobs)
+    assert all(r.alloc_cpus is None for r in records)
+    assert all(any("stem align" in note for note in r.notes) for r in records)
+
+    # One moved file and one job: the stem match is unique and is taken.
+    one, jobs1 = _moved_align(tmp_path / "one", (2,))
+    pairs = match_snakemake_log(one, jobs1)
+    assert [(r.elapsed_s, j.jobid) for r, j in pairs] == [(20.0, "2")]
