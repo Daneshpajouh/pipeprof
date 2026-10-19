@@ -1,0 +1,11 @@
+Job ID: 1234567
+Cluster: cedar
+User/Group: alice/alice
+State: COMPLETED (exit code 0)
+Nodes: 1
+Cores per node: 4
+CPU Utilized: 00:40:00
+CPU Efficiency: 83.33% of 00:48:00 core-walltime
+Job Wall-clock time: 00:12:00
+Memory Utilized: 512.00 MB
+Memory Efficiency: 50.00% of 1.00 GB

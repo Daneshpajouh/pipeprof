@@ -1,0 +1,11 @@
+Job ID: 2000001
+Cluster: cedar
+User/Group: bob/bob
+State: RUNNING
+Cores: 8
+CPU Utilized: 1-02:00:00
+CPU Efficiency: 45.83% of 2-08:00:00 core-walltime
+Job Wall-clock time: 1-03:00:00
+Memory Utilized: 0.00 MB (estimated maximum)
+Memory Efficiency: 0.00% of 32.00 GB
+WARNING: Efficiency statistics may be misleading for RUNNING jobs.

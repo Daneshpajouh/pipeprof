@@ -31,4 +31,8 @@ files were produced by a local run while building this repository.
 | `tools/speedscope_sampled.json` | hand-written, speedscope file format schema ([speedscope.app/file-format-schema.json](https://www.speedscope.app/file-format-schema.json), py-spy not installed here) | a "sampled" profile (py-spy's own type) with a frame (`foo`) that calls itself, to check recursion counts once toward total |
 | `tools/speedscope_evented.json` | hand-written, same schema | an "evented" profile, open/close events reconstructed into stacks |
 
+| `tools/seff_completed.txt` | hand-written, `seff` man page field names (Slurm 26.05, no cluster with Slurm installed here) | a COMPLETED job, `Cores per node` plus `Nodes`, plain `HH:MM:SS` durations |
+| `tools/seff_running.txt` | hand-written, same man page | a RUNNING job (no exit code), a single `Cores:` line, `D-HH:MM:SS` durations, `Memory Utilized: 0.00 MB (estimated maximum)`, the RUNNING efficiency warning |
+| `tools/seff_array.txt` | hand-written, same man page | an array task (`Array Job ID`), a FAILED job with a non-zero exit code, `Nodes` x `Cores per node` |
+
 In `snakemake_macos_run/` the repository path is replaced with `REPO`, the data folder with `DATA_DIR` and the macOS temporary folder with `TMPDIR`; nothing else was edited.
