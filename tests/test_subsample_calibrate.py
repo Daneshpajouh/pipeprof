@@ -399,7 +399,6 @@ def test_emitted_memory_covers_widened_bound(
     assert mem_mb * 10**6 >= plan.predicted_peak_rss_upper_bytes * plan.mem_headroom
 
 
-
 def test_zero_cpu_runs_give_wall_from_observed_range(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -428,7 +427,6 @@ def test_zero_cpu_runs_give_wall_from_observed_range(
     assert (wall.lower, wall.upper) == (3.0, 9.0)
     assert wall.point == 9.0
     assert "no CPU" in wall.note
-
 
 
 def test_fit_log_names_the_model_kind(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
