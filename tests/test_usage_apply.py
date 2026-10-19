@@ -14,16 +14,24 @@ runner = CliRunner()
 
 def _task(name: str, **kw: float | int | None) -> Task:
     return Task(
-        name=name, step=name.split(" ")[0], submit=None, start=0.0, end=10.0,
-        attempt=1, cpus=1, status="COMPLETED", **kw,  # type: ignore[arg-type]
+        name=name,
+        step=name.split(" ", maxsplit=1)[0],
+        submit=None,
+        start=0.0,
+        end=10.0,
+        attempt=1,
+        cpus=1,
+        status="COMPLETED",
+        **kw,  # type: ignore[arg-type]
     )
 
 
 def test_apply_usage_fills_only_missing_fields() -> None:
     tasks = [_task("A (1)", max_rss_bytes=100), _task("B (1)")]
     usage = {
-        "A (1)": StepUsage(source="bsd_time", step="A (1)", wall_s=10.0, user_s=4.0,
-                           sys_s=1.0, max_rss_bytes=999),
+        "A (1)": StepUsage(
+            source="bsd_time", step="A (1)", wall_s=10.0, user_s=4.0, sys_s=1.0, max_rss_bytes=999
+        ),
         "C (1)": StepUsage(source="bsd_time", step="C (1)", max_rss_bytes=5),
     }
     assert apply_usage(tasks, usage) == 1
@@ -35,8 +43,11 @@ def test_apply_usage_fills_only_missing_fields() -> None:
 
 def test_apply_usage_prefers_reported_cpu_percent() -> None:
     tasks = [_task("A (1)")]
-    usage = {"A (1)": StepUsage(source="gnu_time", step="A (1)", wall_s=10.0, user_s=1.0,
-                                sys_s=0.0, cpu_percent=73.0)}
+    usage = {
+        "A (1)": StepUsage(
+            source="gnu_time", step="A (1)", wall_s=10.0, user_s=1.0, sys_s=0.0, cpu_percent=73.0
+        )
+    }
     apply_usage(tasks, usage)
     assert tasks[0].cpu_percent == 73.0
 
@@ -94,10 +105,20 @@ def test_analyze_real_macos_run_with_tool_readings(data: Path, tmp_path: Path) -
     usage_file = tmp_path / "usage.jsonl"
     usage_file.write_text("\n".join(lines) + "\n")
     out = tmp_path / "an"
-    result = runner.invoke(app, [
-        "analyze", "--nextflow-trace", str(run / "trace.txt"), "--usage", str(usage_file),
-        "--cpus", "4", "--outdir", str(out),
-    ])
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--nextflow-trace",
+            str(run / "trace.txt"),
+            "--usage",
+            str(usage_file),
+            "--cpus",
+            "4",
+            "--outdir",
+            str(out),
+        ],
+    )
     assert result.exit_code == 0, result.output
     report = json.loads((out / "analysis.json").read_text())
     labels = {b["step"]: b["label"] for b in report["bound_labels"]}
@@ -112,13 +133,24 @@ def test_apply_usage_cpu_share_over_the_task_wall_time() -> None:
     # docstring's rule: the share is over the task's wall time when it has one.
     tasks = [_task("A (1)")]
     tasks[0].end = 20.0
-    usage = {"A (1)": StepUsage(source="bsd_time", step="A (1)", wall_s=10.0, user_s=4.0,
-                                sys_s=1.0)}
+    usage = {
+        "A (1)": StepUsage(source="bsd_time", step="A (1)", wall_s=10.0, user_s=4.0, sys_s=1.0)
+    }
     apply_usage(tasks, usage)
     assert tasks[0].cpu_percent == 25.0
     # No times on the task: the tool's own wall time is used.
-    untimed = [Task(name="A (1)", step="A", submit=None, start=None, end=None, attempt=1,
-                    cpus=1, status="COMPLETED")]
+    untimed = [
+        Task(
+            name="A (1)",
+            step="A",
+            submit=None,
+            start=None,
+            end=None,
+            attempt=1,
+            cpus=1,
+            status="COMPLETED",
+        )
+    ]
     apply_usage(untimed, usage)
     assert untimed[0].cpu_percent == 50.0
 
@@ -140,9 +172,18 @@ def test_analyze_tsv_derives_cpu_share_from_tool_times(tmp_path: Path) -> None:
     reading = {"source": "time", "step": "align", "user_s": 80.0, "sys_s": 10.0}
     usage_file.write_text(json.dumps(reading) + "\n")
     out = tmp_path / "an"
-    result = runner.invoke(app, [
-        "analyze", "--tsv", str(tsv), "--usage", str(usage_file), "--outdir", str(out),
-    ])
+    result = runner.invoke(
+        app,
+        [
+            "analyze",
+            "--tsv",
+            str(tsv),
+            "--usage",
+            str(usage_file),
+            "--outdir",
+            str(out),
+        ],
+    )
     assert result.exit_code == 0, result.output
     assert "Tool readings matched 1 of 1 tasks" in result.output
     report = json.loads((out / "analysis.json").read_text())

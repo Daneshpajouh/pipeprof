@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TypeVar
 
 import pytest
 from hypothesis import given, settings
@@ -24,6 +25,14 @@ from pipeprof.units import (
     parse_memory,
     parse_slurm_duration,
 )
+
+T = TypeVar("T")
+
+
+def _known(value: T | None) -> T:
+    """The value of an Optional the test has set up to be present."""
+    assert value is not None
+    return value
 
 
 @pytest.mark.parametrize(
@@ -120,7 +129,7 @@ def test_interval_contains_point(a: float, b: float, x0: float) -> None:
     xs = [1.0, 2.0, 3.0, 5.0, 8.0]
     ys = [a + b * x * (1.0 + 0.03 * ((i % 2) * 2 - 1)) for i, x in enumerate(xs)]
     sel = select_model(xs, ys)
-    lo, hi = sel.chosen.interval(x0)
+    lo, hi = _known(sel.chosen.interval(x0))
     assert lo <= sel.chosen.predict(x0) <= hi
     assert sel.chosen.kind in {ModelKind.LINEAR, ModelKind.POWER}
 

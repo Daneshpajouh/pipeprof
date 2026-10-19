@@ -76,7 +76,7 @@ def test_snakemake_real_macos_run(data: Path) -> None:
     assert failed[0].start is not None and failed[0].end is not None
     assert failed[0].end >= failed[0].start
 
-    completed = [t for t in tasks if t.step == "sort_vcf"][0]
+    completed = next(t for t in tasks if t.step == "sort_vcf")
     assert completed.start is not None and completed.end is not None
     assert completed.mem_request_bytes == 1000 * 10**6
     assert completed.cpus == 1
@@ -114,8 +114,7 @@ def test_tsv_builder_missing_times_stay_none() -> None:
 def test_load_usage_reads_json_lines(tmp_path: Path) -> None:
     path = tmp_path / "usage.jsonl"
     path.write_text(
-        '{"source": "gnutime", "step": "sort_vcf", "max_rss_bytes": 123, "extra": "ignored"}\n'
-        "\n"
+        '{"source": "gnutime", "step": "sort_vcf", "max_rss_bytes": 123, "extra": "ignored"}\n\n'
     )
     usage = load_usage([path])
     assert usage["sort_vcf"].max_rss_bytes == 123
@@ -253,4 +252,4 @@ def test_snakemake_benchmark_repeats_are_one_task(tmp_path: Path) -> None:
     assert task.name == "sort (job 4)"
     assert task.wall_s == 30.0  # three 10 s repeats in a row
     assert task.cpu_percent == pytest.approx(80.0)
-    assert task.max_rss_bytes == round(102 * 1024 * 1024)
+    assert task.max_rss_bytes == (102 * 1024 * 1024)

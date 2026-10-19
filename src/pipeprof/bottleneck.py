@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 
 from pipeprof.timeline import Task
 
@@ -103,6 +104,17 @@ class BottleneckReport:
 # Critical path
 
 
+def _span(task: Task) -> tuple[float, float]:
+    """Start and end of a task the caller has already checked is timed."""
+    if task.start is None or task.end is None:
+        raise ValueError(f"task {task.name!r} has no start or end time")
+    return task.start, task.end
+
+
+def _end(task: Task) -> float:
+    return task.end if task.end is not None else float("-inf")
+
+
 def _infer_predecessor(task: Task, candidates: Sequence[Task]) -> Task | None:
     """The task that finished most recently before ``task`` started.
 
@@ -111,12 +123,13 @@ def _infer_predecessor(task: Task, candidates: Sequence[Task]) -> Task | None:
     conservative stand-in is "whatever last finished is what this one was
     probably waiting on or scheduled after".
     """
-    before = [
-        c for c in candidates if c is not task and c.end is not None and c.end <= task.start
-    ]
+    if task.start is None:
+        return None
+    start = task.start
+    before = [c for c in candidates if c is not task and c.end is not None and c.end <= start]
     if not before:
         return None
-    return max(before, key=lambda c: c.end)  # type: ignore[arg-type, return-value]
+    return max(before, key=_end)
 
 
 def critical_path(
@@ -133,8 +146,13 @@ def critical_path(
     """
     timed = [t for t in tasks if t.start is not None and t.end is not None]
     if not timed:
-        return CriticalPath(steps=[], method="no tasks with both a start and an end", wall_s=0.0,
-                             busy_s=0.0, waiting_s=0.0)
+        return CriticalPath(
+            steps=[],
+            method="no tasks with both a start and an end",
+            wall_s=0.0,
+            busy_s=0.0,
+            waiting_s=0.0,
+        )
 
     if dependencies is not None:
         method = "declared dependencies, the one that finished latest at each step"
@@ -168,12 +186,16 @@ def critical_path(
     chain.reverse()
 
     steps: list[CriticalPathStep] = []
-    for i, t in enumerate(chain):
-        gap = 0.0 if i == 0 else max(0.0, t.start - chain[i - 1].end)  # type: ignore[operator]
+    busy = 0.0
+    prev_end: float | None = None
+    for t in chain:
+        start, end = _span(t)
+        gap = 0.0 if prev_end is None else max(0.0, start - prev_end)
         steps.append(CriticalPathStep(task=t, gap_before_s=gap))
-    busy = sum((t.end - t.start) for t in chain)  # type: ignore[operator]
+        busy += end - start
+        prev_end = end
     waiting = sum(s.gap_before_s for s in steps)
-    wall = chain[-1].end - chain[0].start  # type: ignore[operator]
+    wall = _span(chain[-1])[1] - _span(chain[0])[0]
     return CriticalPath(steps=steps, method=method, wall_s=wall, busy_s=busy, waiting_s=waiting)
 
 
@@ -264,19 +286,16 @@ def parallel_efficiency(
 
 def idle_gaps(tasks: Sequence[Task]) -> tuple[list[IdleGap], float]:
     """Spans with no task running, found by merging overlapping busy intervals."""
-    timed = sorted(
-        (t for t in tasks if t.start is not None and t.end is not None),
-        key=lambda t: t.start,  # type: ignore[arg-type, return-value]
-    )
-    if not timed:
+    spans = sorted(_span(t) for t in tasks if t.start is not None and t.end is not None)
+    if not spans:
         return [], 0.0
     merged: list[list[float]] = []
-    for t in timed:
-        if merged and t.start <= merged[-1][1]:  # type: ignore[operator]
-            merged[-1][1] = max(merged[-1][1], t.end)  # type: ignore[arg-type]
+    for start, end in spans:
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
         else:
-            merged.append([t.start, t.end])  # type: ignore[list-item]
-    gaps = [IdleGap(start=a[1], end=b[0]) for a, b in zip(merged, merged[1:]) if b[0] > a[1]]
+            merged.append([start, end])
+    gaps = [IdleGap(start=a[1], end=b[0]) for a, b in pairwise(merged) if b[0] > a[1]]
     return gaps, sum(g.duration_s for g in gaps)
 
 
@@ -286,7 +305,7 @@ def idle_gaps(tasks: Sequence[Task]) -> tuple[list[IdleGap], float]:
 def queue_waits(tasks: Sequence[Task]) -> tuple[list[tuple[str, float]], float]:
     """Start minus submit for every task that carries both."""
     waits = [(t.name, t.queue_wait_s) for t in tasks if t.queue_wait_s is not None]
-    return waits, sum(w for _, w in waits)  # type: ignore[misc]
+    return waits, sum(w for _, w in waits)
 
 
 # Retries
@@ -308,9 +327,7 @@ def retries(tasks: Sequence[Task]) -> tuple[list[Retry], float]:
         if not has_retry:
             continue
         failed = [t for t in group if t.status != "COMPLETED"]
-        lost = sum(
-            (t.end - t.start) for t in failed if t.start is not None and t.end is not None
-        )
+        lost = sum((t.end - t.start) for t in failed if t.start is not None and t.end is not None)
         out.append(Retry(name=name, attempts=len(group), lost_s=lost))
         lost_total += lost
     return out, lost_total

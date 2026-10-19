@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import dataclasses
+import importlib
 import json
 import subprocess
 import sys
@@ -431,9 +432,7 @@ def analyze_cmd(
     snakemake_log: Annotated[
         Path | None, typer.Option(help="Snakemake run log (with --snakemake-benchmarks).")
     ] = None,
-    tsv: Annotated[
-        Path | None, typer.Option(help="Plain name/start/end TSV, any runner.")
-    ] = None,
+    tsv: Annotated[Path | None, typer.Option(help="Plain name/start/end TSV, any runner.")] = None,
     usage: Annotated[
         list[Path], typer.Option("--usage", help="StepUsage JSON lines file(s).")
     ] = [],  # noqa: B006
@@ -507,8 +506,6 @@ def usage_cmd(
     ],
 ) -> None:
     """Print one StepUsage JSON line from a tool's output, for pipeprof analyze --usage."""
-    import importlib
-
     if tool not in _USAGE_READERS:
         console.print(f"[red]unknown tool {tool!r}; use one of {', '.join(_USAGE_READERS)}[/red]")
         raise typer.Exit(2)

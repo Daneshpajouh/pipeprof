@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from typing import TypeVar
 
 import pytest
 
@@ -15,6 +16,14 @@ from pipeprof.fit import (
     student_t_cdf,
     student_t_ppf,
 )
+
+T = TypeVar("T")
+
+
+def _known(value: T | None) -> T:
+    """The value of an Optional the test has set up to be present."""
+    assert value is not None
+    return value
 
 
 @pytest.mark.parametrize(
@@ -51,7 +60,7 @@ def test_linear_recovers_line() -> None:
     assert fit.intercept == pytest.approx(3)
     assert fit.slope == pytest.approx(2)
     assert fit.predict(100) == pytest.approx(203)
-    lo, hi = fit.interval(100)
+    lo, hi = _known(fit.interval(100))
     assert lo == pytest.approx(203) and hi == pytest.approx(203)
     assert "2 * x" in fit.formula()
     assert fit.to_dict()["kind"] == "linear"
@@ -69,19 +78,19 @@ def test_interval_widens_with_noise_and_distance() -> None:
     xs = [1, 2, 3, 4, 5, 6]
     ys = [2.1, 3.9, 6.2, 7.8, 10.1, 12.0]
     fit = fit_linear(xs, ys)
-    near = fit.interval(3.5)
-    far = fit.interval(60)
+    near = _known(fit.interval(3.5))
+    far = _known(fit.interval(60))
     assert near[0] < fit.predict(3.5) < near[1]
     assert (far[1] - far[0]) > (near[1] - near[0])
     power = fit_power(xs, ys)
-    lo, hi = power.interval(60)
+    lo, hi = _known(power.interval(60))
     assert lo < power.predict(60) < hi
 
 
 def test_negative_slope_formula_and_clipping() -> None:
     fit = fit_linear([1, 2, 3], [10, 8, 6.5])
     assert " - " in fit.formula()
-    assert fit.interval(100)[0] == 0.0
+    assert _known(fit.interval(100))[0] == 0.0
 
 
 def test_fit_errors() -> None:
@@ -164,11 +173,11 @@ def test_flat_series_interval_covers_the_rise() -> None:
 
     xs, ys = _series([0.01, 0.02, 0.05, 0.1])
     # The straight fit misses, as it did on the cluster.
-    _, old_upper = select_model(xs, ys).chosen.interval(FULL_X)
+    _, old_upper = _known(select_model(xs, ys).chosen.interval(FULL_X))
     assert old_upper < ACTUAL_FULL
     pred = predict_with_plateau(xs, ys, FULL_X)
     assert pred.plateau is not None and pred.plateau.whole
-    assert pred.lower <= ACTUAL_FULL <= pred.upper
+    assert _known(pred.lower) <= ACTUAL_FULL <= _known(pred.upper)
     assert pred.upper == pytest.approx(ys[-1] * 10)  # largest run scaled by 1 / 0.1
     assert "flat" in pred.note and "larger fractions" in pred.note
 
@@ -179,7 +188,7 @@ def test_flat_then_rise_fits_after_the_hinge() -> None:
     xs, ys = _series([0.01, 0.02, 0.05, 0.1, 0.2])
     pred = predict_with_plateau(xs, ys, FULL_X)
     assert pred.plateau is not None and not pred.plateau.whole
-    assert pred.lower <= ACTUAL_FULL <= pred.upper
+    assert _known(pred.lower) <= ACTUAL_FULL <= _known(pred.upper)
     # Two sizes after the hinge: the line through them, widened to the proportional bound.
     assert pred.point == pytest.approx(ACTUAL_FULL, rel=0.01)
     assert pred.upper == pytest.approx(ys[-1] * 5)
@@ -233,4 +242,3 @@ def test_two_points_have_no_interval() -> None:
     # Three points do have one, and it has width.
     lo, hi = fit_linear([1.0, 2.0, 3.0], [10.0, 21.0, 29.0]).interval(100.0) or (0.0, 0.0)
     assert hi > lo
-

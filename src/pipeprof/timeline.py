@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 import datetime as dt
 import io
+import json
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -237,6 +238,7 @@ def tasks_from_snakemake(benchmark_dir: Path, log_path: Path | None = None) -> l
             job_id = record.job_id
         log_start, log_end = times.get(job_id, (None, None)) if job_id else (None, None)
         start = log_start
+        end: float | None
         if start is not None and record.elapsed_s is not None:
             end = start + record.elapsed_s
         else:
@@ -385,12 +387,9 @@ def apply_usage(tasks: Sequence[Task], usage: Mapping[str, StepUsage]) -> int:
 def load_usage(paths: Sequence[Path]) -> dict[str, StepUsage]:
     """Read ``StepUsage`` JSON lines files into a mapping by step name.
 
-    The tool readers (GNU time, psrecord, py-spy, seff) that write these
-    lines are built on another branch against the already committed
-    :class:`StepUsage`; this only loads what they write.
+    The tool readers (GNU time, psrecord, py-spy, seff) write these lines;
+    this only loads them.
     """
-    import json
-
     fields = StepUsage.__dataclass_fields__
     usage: dict[str, StepUsage] = {}
     for path in paths:

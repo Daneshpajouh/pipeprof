@@ -115,9 +115,9 @@ def parse_seff(text: str, step: str | None = None) -> StepUsage:
 
     mem_efficiency_match = _MEM_EFFICIENCY_RE.search(text)
     if mem_efficiency_match:
-        efficiency = parse_percent(mem_efficiency_match.group(1) + "%")
+        mem_percent = parse_percent(mem_efficiency_match.group(1) + "%")
         requested = parse_memory(mem_efficiency_match.group(2))
-        notes.append(f"memory efficiency: {efficiency}% of {requested} bytes requested")
+        notes.append(f"memory efficiency: {mem_percent}% of {requested} bytes requested")
     elif line := _MEM_EFFICIENCY_LINE_RE.search(text):
         notes.append(f"memory efficiency line not read: {line.group(0).strip()}")
 

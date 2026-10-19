@@ -14,10 +14,8 @@ from pipeprof.tools.usage import StepUsage
 
 _HEADER_PREFIX = "# Elapsed time"
 
-# psrecord's MB is MiB (2**20): this matches psutil's memory_info(), which
-# psrecord reads directly and divides by 1024**2 for its "Real (MB)" and
-# "Virtual (MB)" columns. [CONFIRM] against psrecord's source before relying
-# on this in a context where the distinction from decimal MB matters.
+# psrecord's MB is MiB: psrecord 1.4 (main.py) divides psutil's rss and vms
+# by 1024.0**2 for its "Real (MB)" and "Virtual (MB)" columns.
 _MIB = 1024 * 1024
 
 

@@ -12,10 +12,16 @@ from pipeprof.timeline import Task
 
 
 def task(**kwargs: object) -> Task:
-    base = dict(
-        name="t", step="t", submit=None, start=0.0, end=10.0, attempt=1, cpus=1,
-        status="COMPLETED",
-    )
+    base: dict[str, object] = {
+        "name": "t",
+        "step": "t",
+        "submit": None,
+        "start": 0.0,
+        "end": 10.0,
+        "attempt": 1,
+        "cpus": 1,
+        "status": "COMPLETED",
+    }
     base.update(kwargs)
     return Task(**base)  # type: ignore[arg-type]
 
@@ -75,7 +81,7 @@ def test_unknown_in_the_middle_band() -> None:
 
 def test_label_steps_sorts_by_name() -> None:
     labels = label_steps({"b": [task()], "a": [task()]})
-    assert [l.step for l in labels] == ["a", "b"]
+    assert [label.step for label in labels] == ["a", "b"]
 
 
 def test_io_threshold_both_sides() -> None:

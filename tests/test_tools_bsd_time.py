@@ -36,7 +36,7 @@ def test_block_io_counts_in_notes(data: Path) -> None:
 
 def test_not_bsd_time_output() -> None:
     with pytest.raises(ValueError, match="not a macOS time -l"):
-        parse_bsd_time("Command being timed: \"x\"\nUser time (seconds): 0.0\n")
+        parse_bsd_time('Command being timed: "x"\nUser time (seconds): 0.0\n')
 
 
 def test_rss_units_differ_gnu_kbytes_vs_bsd_bytes(data: Path) -> None:

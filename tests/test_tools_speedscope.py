@@ -91,18 +91,34 @@ def test_no_profiles() -> None:
 
 def _two_thread_doc() -> str:
     # py-spy writes one profile per thread; hand-written from the schema.
-    return json.dumps({
-        "$schema": "https://www.speedscope.app/file-format-schema.json",
-        "shared": {"frames": [{"name": "main"}, {"name": "worker"}, {"name": "io_wait"}]},
-        "profiles": [
-            {"type": "sampled", "name": "MainThread", "unit": "samples", "startValue": 0,
-             "endValue": 2, "samples": [[0], [0]], "weights": [1, 1]},
-            {"type": "sampled", "name": "Thread-1", "unit": "samples", "startValue": 0,
-             "endValue": 8, "samples": [[1], [1, 2]], "weights": [5, 3]},
-        ],
-        "activeProfileIndex": 0,
-        "exporter": "py-spy",
-    })
+    return json.dumps(
+        {
+            "$schema": "https://www.speedscope.app/file-format-schema.json",
+            "shared": {"frames": [{"name": "main"}, {"name": "worker"}, {"name": "io_wait"}]},
+            "profiles": [
+                {
+                    "type": "sampled",
+                    "name": "MainThread",
+                    "unit": "samples",
+                    "startValue": 0,
+                    "endValue": 2,
+                    "samples": [[0], [0]],
+                    "weights": [1, 1],
+                },
+                {
+                    "type": "sampled",
+                    "name": "Thread-1",
+                    "unit": "samples",
+                    "startValue": 0,
+                    "endValue": 8,
+                    "samples": [[1], [1, 2]],
+                    "weights": [5, 3],
+                },
+            ],
+            "activeProfileIndex": 0,
+            "exporter": "py-spy",
+        }
+    )
 
 
 def test_all_profiles_are_read_by_default() -> None:
@@ -118,7 +134,7 @@ def test_all_profiles_are_read_by_default() -> None:
 
 def test_one_profile_on_request() -> None:
     profile = parse_speedscope(_two_thread_doc(), profile_index=1)
-    assert [cost.name for cost in profile.top_functions(5)][0] == "worker"
+    assert next(cost.name for cost in profile.top_functions(5)) == "worker"
     assert profile.profile_names == ["Thread-1"]
     with pytest.raises(ValueError, match="out of range"):
         parse_speedscope(_two_thread_doc(), profile_index=5)

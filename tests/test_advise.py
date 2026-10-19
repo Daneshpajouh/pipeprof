@@ -16,10 +16,16 @@ from pipeprof.timeline import Task
 
 
 def task(**kwargs: object) -> Task:
-    base = dict(
-        name="t", step="t", submit=None, start=0.0, end=10.0, attempt=1, cpus=1,
-        status="COMPLETED",
-    )
+    base: dict[str, object] = {
+        "name": "t",
+        "step": "t",
+        "submit": None,
+        "start": 0.0,
+        "end": 10.0,
+        "attempt": 1,
+        "cpus": 1,
+        "status": "COMPLETED",
+    }
     base.update(kwargs)
     return Task(**base)  # type: ignore[arg-type]
 

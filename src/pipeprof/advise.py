@@ -174,6 +174,7 @@ def request_advice(step: str, tasks: Sequence[Task]) -> list[RequestAdvice]:
         if t.status == "COMPLETED" and t.max_rss_bytes is not None and t.mem_request_bytes
     ]
     if completed:
+
         def _frac(t: Task) -> float:
             return t.max_rss_bytes / t.mem_request_bytes  # type: ignore[operator]
 

@@ -8,7 +8,7 @@ import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 import pytest
 
@@ -29,6 +29,15 @@ from pipeprof.subsample import (
     remove_subsamples,
 )
 from tests.conftest import write_vcf
+
+T = TypeVar("T")
+
+
+def _known(value: T | None) -> T:
+    """The value of an Optional the test has set up to be present."""
+    assert value is not None
+    return value
+
 
 PY = sys.executable
 HAVE_BGZIP = shutil.which("bgzip") is not None and shutil.which("tabix") is not None
@@ -170,7 +179,7 @@ def test_calibrate_end_to_end(tmp_path: Path) -> None:
     )
     assert len(result.points) == 5
     rss = result.predictions["peak_rss_bytes"]
-    assert rss.lower <= rss.point <= rss.upper
+    assert _known(rss.lower) <= rss.point <= _known(rss.upper)
     assert result.validation is not None
     actual = result.validation["metrics"]["peak_rss_bytes"]["actual"]
     assert 0.5 < rss.point / actual < 2.0
@@ -208,6 +217,7 @@ def test_calibrate_shell_mode_records_and_failures(tmp_path: Path) -> None:
 
 SINGLE_THREAD = """
 import sys, time
+
 n = sum(1 for _ in open(sys.argv[1]))
 start = time.process_time()
 while time.process_time() - start < n * 2e-6:
@@ -307,11 +317,11 @@ def test_waiting_runs_use_the_cpu_model() -> None:
     # CPU upper / worst is above the slow run's wall scaled to full size, so the
     # ratio is raised until the upper bound sits on that cap.
     cap = 15.15 * 1e9 / 1e8
-    assert cpu.upper / worst > cap
-    ratio = cpu.upper / cap
+    assert _known(cpu.upper) / worst > cap
+    ratio = _known(cpu.upper) / cap
     assert wall.point == pytest.approx(cpu.point / ratio)
     assert wall.upper == pytest.approx(cap)
-    assert wall.lower <= wall.point <= wall.upper
+    assert _known(wall.lower) <= wall.point <= _known(wall.upper)
     assert "mostly waiting" in wall.note and "15.15 s on 3.56 s CPU" in wall.note
     assert "2.00 to 15.15 s" in wall.note
 
@@ -339,7 +349,7 @@ def _fake_calibrate(
     from pipeprof.measure import Measurement
 
     def fake_measure(template: Any, input_path: Path, workdir: Path, tag: str, **_: Any) -> Any:
-        fraction = 0.01 if tag == "warmup" else float(tag.split("_")[0])
+        fraction = 0.01 if tag == "warmup" else float(tag.split("_", maxsplit=1)[0])
         wall, cpu, rss = usage(fraction)
         peak = int(rss)
         return Measurement("x", 0, wall, cpu, 0.0, peak, peak, peak, None, None, 0, 0, 1, 0.05)
@@ -364,7 +374,7 @@ def _snakemake_values(result: Any) -> tuple[int, int]:
 
     namespace: dict[str, Any] = {}
     code = result.snippets["snakemake_rule"].split("rule job:")[0]
-    exec(code, namespace)  # noqa: S102 - our own generated code
+    exec(code, namespace)
     size = SimpleNamespace(size_mb=result.full_input_bytes / MIB)
     return namespace["job_mem_mb"](None, size, 1), namespace["job_runtime"](None, size, 1)
 
@@ -490,7 +500,7 @@ def test_low_cpu_stall_run_does_not_inflate_wall() -> None:
     from pipeprof.calibrate import MIN_CPU_SHARE, predict_metrics
     from pipeprof.units import MIB
 
-    assert 0.02 / 500.0 < MIN_CPU_SHARE
+    assert MIN_CPU_SHARE > 0.02 / 500.0
     runs = [_mib_run(*r) for r in STALL_RUNS]
     wall = predict_metrics(runs, 1000 * MIB, "bytes")["wall_s"]
     assert wall.basis == "mostly waiting"
@@ -499,7 +509,7 @@ def test_low_cpu_stall_run_does_not_inflate_wall() -> None:
     assert wall.point == pytest.approx(500.0)
     assert wall.upper == pytest.approx(500.0)
     # Never above any run's wall scaled in proportion to input.
-    assert wall.upper <= max(w * 1000 / x for x, w, _ in STALL_RUNS)
+    assert _known(wall.upper) <= max(w * 1000 / x for x, w, _ in STALL_RUNS)
     assert "1 run(s) kept under 1% of one core busy" in wall.note
 
 
@@ -530,8 +540,8 @@ def test_derived_wall_never_above_proportional_walls() -> None:
     assert wall.upper == pytest.approx(cap)
     # The emitted runtime formula comes from the same scaled model, so its
     # upper bound at full size is the capped one.
-    assert wall.selection.chosen.interval(1e9)[1] == pytest.approx(cap)
-    assert wall.lower <= wall.point <= wall.upper
+    assert _known(wall.selection.chosen.interval(1e9))[1] == pytest.approx(cap)
+    assert _known(wall.lower) <= wall.point <= _known(wall.upper)
 
 
 def test_two_runs_give_no_interval_and_a_proportional_request(
@@ -565,7 +575,6 @@ def test_two_runs_give_no_interval_and_a_proportional_request(
     assert mem_mb * 10**6 >= mem.fallback_upper * plan.mem_headroom
 
 
-
 def _snakemake_mem_at(result: Any, size_bytes: float) -> int:
     """The emitted Snakemake mem_mb at one input size, first attempt."""
     from types import SimpleNamespace
@@ -573,7 +582,7 @@ def _snakemake_mem_at(result: Any, size_bytes: float) -> int:
     from pipeprof.units import MIB
 
     namespace: dict[str, Any] = {}
-    exec(result.snippets["snakemake_rule"].split("rule job:")[0], namespace)  # noqa: S102
+    exec(result.snippets["snakemake_rule"].split("rule job:")[0], namespace)
     mem_mb: int = namespace["job_mem_mb"](None, SimpleNamespace(size_mb=size_bytes / MIB), 1)
     return mem_mb
 

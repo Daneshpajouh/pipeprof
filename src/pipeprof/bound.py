@@ -158,13 +158,13 @@ def label_step(name: str, tasks: Sequence[Task]) -> BoundLabel:
             [f"crossed {IO_BOUND_BYTES_PER_S / (1024 * 1024):.0f} MiB/s I/O threshold"],
         )
     if avg_cores is not None and avg_cores < CPU_WAIT_THRESHOLD:
-        why = [f"under {CPU_WAIT_THRESHOLD:.0%} of one core busy, the threshold for waiting"]
+        reasons = [f"under {CPU_WAIT_THRESHOLD:.0%} of one core busy, the threshold for waiting"]
         if avg_io is not None:
-            why.append(
+            reasons.append(
                 f"under {IO_BOUND_BYTES_PER_S / (1024 * 1024):.0f} MiB/s, so the time is not "
                 "spent moving data"
             )
-        return make("mostly waiting", why)
+        return make("mostly waiting", reasons)
     return make("unknown", ["no threshold crossed"])
 
 

@@ -155,8 +155,14 @@ def test_critical_path_on_the_real_macos_snakemake_run(data: Path) -> None:
     tasks = tasks_from_snakemake(run / "benchmarks", run / "run.snakemake.log")
     report = analyse(tasks, cpus_available=4)
     assert report.critical_path.wall_s > 0
-    assert abs(report.critical_path.busy_s + report.critical_path.waiting_s
-               - report.critical_path.wall_s) < 1e-6
+    assert (
+        abs(
+            report.critical_path.busy_s
+            + report.critical_path.waiting_s
+            - report.critical_path.wall_s
+        )
+        < 1e-6
+    )
     assert report.parallel_efficiency is not None
     assert 0.0 <= report.parallel_efficiency.average <= 4.0
     names = {s.step for s in report.step_shares}
