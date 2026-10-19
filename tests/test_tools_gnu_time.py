@@ -42,3 +42,11 @@ def test_killed_by_signal_and_unknown_cpu(data: Path) -> None:
 def test_not_gnu_time_output() -> None:
     with pytest.raises(ValueError, match="not a GNU time"):
         parse_gnu_time("real 0.01\nuser 0.00\nsys 0.00\n")
+
+
+def test_signal_wins_over_exit_status_line(data: Path) -> None:
+    # Both "Command terminated by signal 9" and an "Exit status" line: the
+    # signal is what ended the command, so it must not be lost.
+    usage = parse_gnu_time((data / "tools" / "gnu_time_killed_exit_status.txt").read_text())
+    assert usage.exit_code == -9
+    assert "terminated by signal 9" in usage.notes

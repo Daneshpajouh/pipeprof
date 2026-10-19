@@ -5,8 +5,8 @@ Format: the GNU time info manual (https://www.gnu.org/software/time/, read
 `-v`/`--verbose` section. The report is a fixed set of ``Label: value`` lines,
 each on its own line and usually indented with a tab; it is written after the
 timed command, so a program's own stderr can appear above it. A command
-killed by a signal prints "Command terminated by signal N" instead of the
-usual "Exit status" line.
+killed by a signal gets a "Command terminated by signal N" line, and can get
+the "Exit status" line as well; the signal line wins.
 """
 
 from __future__ import annotations
@@ -65,14 +65,19 @@ def parse_gnu_time(text: str, step: str | None = None) -> StepUsage:
     exit_code: int | None = None
     exit_match = _EXIT_RE.search(text)
     signal_match = _SIGNAL_RE.search(text)
-    if exit_match:
-        exit_code = int(exit_match.group(1))
-    elif signal_match:
+    # The signal line is checked first: a killed command can also get an
+    # "Exit status" line from the -v format's %x, and that number does not say
+    # a signal ended the command.
+    if signal_match:
         signal = int(signal_match.group(1))
         # Follow the POSIX/subprocess convention of a negative return code for a
-        # command a signal killed, since GNU time prints no exit status here.
+        # command a signal killed.
         exit_code = -signal
         notes.append(f"terminated by signal {signal}")
+        if exit_match:
+            notes.append(f"exit status line also present: {exit_match.group(1)}")
+    elif exit_match:
+        exit_code = int(exit_match.group(1))
 
     # File system inputs/outputs are counts of 512-byte blocks per the GNU time
     # manual; keep them as raw counts rather than guessing at a byte total.

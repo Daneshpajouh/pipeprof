@@ -21,6 +21,7 @@ files were produced by a local run while building this repository.
 | `tools/gnu_time_ok.txt` | hand-written, GNU time info manual `-v` section ([gnu.org/software/time](https://www.gnu.org/software/time/), no Linux `/usr/bin/time -v` on this Mac to run for real) | a clean run, `m:ss.ss` elapsed, known CPU percent, file system input/output block counts |
 | `tools/gnu_time_long.txt` | hand-written, same manual | `h:mm:ss` elapsed, a non-zero exit status |
 | `tools/gnu_time_killed.txt` | hand-written, same manual | the program's own traceback above the report, `Percent of CPU this job got: ?%`, "Command terminated by signal 9" in place of "Exit status" |
+| `tools/gnu_time_killed_exit_status.txt` | hand-written, same manual's `-v` format (signal line above the report, `Exit status: %x` at its end) | a killed command with both "Command terminated by signal 9" and "Exit status: 9"; the signal must win. The exit status value 9 is as the review of the parser describes; it was not checked against a real GNU time run here |
 
 | `tools/bsd_time_ok.txt` | real: `/usr/bin/time -l python3 -c "x=bytearray(50_000_000)"` on this Mac (Darwin 27, macOS 26), 2026-10-19 | a clean run, maximum resident set size already in bytes |
 | `tools/bsd_time_failing.txt` | real: `/usr/bin/time -l python3 -c "import sys; sys.exit(1)"` on this Mac, 2026-10-19 | a command that exits 1; `time -l` still prints no exit status at all |
