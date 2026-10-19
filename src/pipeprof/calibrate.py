@@ -13,7 +13,7 @@ import json
 import math
 import shlex
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -29,9 +29,11 @@ from pipeprof.emit import (
     snakemake_rule,
 )
 from pipeprof.fit import (
+    NO_INTERVAL,
     Selection,
     constant_fit,
     predict_with_plateau,
+    proportional_bound,
     scale_fit,
     select_model,
 )
@@ -93,8 +95,9 @@ class Prediction:
 
     metric: str
     point: float
-    lower: float
-    upper: float
+    #: ``None`` when the fit has no interval (fewer than three runs).
+    lower: float | None
+    upper: float | None
     level: float
     selection: Selection
     #: "fitted"; for memory "flat" (no growth seen) or "flat then rising" (hinge fit);
@@ -102,6 +105,20 @@ class Prediction:
     basis: str = "fitted"
     note: str = ""
     observed_range: tuple[float, float] | None = None
+    #: With no interval, the bound the request is sized from instead.
+    fallback_upper: float | None = None
+
+    @property
+    def plan_upper(self) -> float:
+        """The upper bound the request is sized from: the interval's, else the fallback."""
+        if self.upper is not None:
+            return self.upper
+        return self.fallback_upper if self.fallback_upper is not None else self.point
+
+    def interval_text(self, fmt: Callable[[float], str]) -> str:
+        if self.lower is None or self.upper is None:
+            return NO_INTERVAL
+        return f"{fmt(self.lower)} to {fmt(self.upper)}"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -109,6 +126,7 @@ class Prediction:
             "point": self.point,
             "lower": self.lower,
             "upper": self.upper,
+            "fallback_upper": self.fallback_upper,
             "level": self.level,
             "basis": self.basis,
             "note": self.note,
@@ -360,14 +378,15 @@ def _wall_from_cpu(
         if x > 0
     ]
     ratio = worst
-    if scaled and cpu.upper / worst > max(scaled):
+    cpu_upper = cpu.plan_upper
+    if scaled and cpu_upper / worst > max(scaled):
         cap = max(scaled)
-        ratio = cpu.upper / cap
+        ratio = cpu_upper / cap
         note += (
             f"; capped at {cap:.2f} s, the longest wall of any run scaled in proportion "
             f"to input (cores-busy ratio {ratio:.3f} used)"
         )
-    point, upper = cpu.point / ratio, cpu.upper / ratio
+    point, upper = cpu.point / ratio, cpu_upper / ratio
     if pure:
         stall = max(p.measurement.wall_s for p in pure)
         if stall > point:
@@ -391,6 +410,20 @@ def _wall_from_cpu(
         dict(cpu.selection.cv_errors),
         reason,
     )
+    if cpu.lower is None or cpu.upper is None:
+        # No CPU interval, so none for the wall derived from it either.
+        return Prediction(
+            "wall_s",
+            point,
+            None,
+            None,
+            cpu.level,
+            selection,
+            basis="mostly waiting",
+            note=f"{note}; {NO_INTERVAL}",
+            observed_range=(min(walls), max(walls)),
+            fallback_upper=upper,
+        )
     return Prediction(
         "wall_s",
         point,
@@ -437,7 +470,7 @@ def predict_metrics(
         else:
             selection = select_model(xs, ys)
             point = selection.chosen.predict(x_full)
-            lower, upper = selection.chosen.interval(x_full, level)
+            lower, upper = selection.chosen.interval(x_full, level) or (None, None)
         largest = max(ys)
         if x_full >= max(xs) and point < largest:
             # The full input cannot need less than its largest subsample did.
@@ -445,9 +478,31 @@ def predict_metrics(
                 f"; prediction {point:.4g} raised to the largest measured value {largest:.4g}"
             )
             point = largest
-            upper = max(upper, largest)
+            if upper is not None:
+                upper = max(upper, largest)
+        fallback = None
+        if lower is None or upper is None:
+            # Two runs fit a line exactly and say nothing about the scatter. The
+            # largest measured value alone would size the full input from a
+            # subsample (the 2.5x memory miss); the largest run scaled in proportion
+            # to input is the bound used when no growth can be read.
+            lower = upper = None
+            fallback = max(point, proportional_bound(xs, ys, x_full))
+            extra = (
+                f"{NO_INTERVAL}; request sized from {fallback:.4g}, the larger of the point "
+                "prediction and the largest run scaled in proportion to input"
+            )
+            note = f"{note}; {extra}" if note else extra
         predictions[metric] = Prediction(
-            metric, point, lower, upper, level, selection, basis=basis, note=note
+            metric,
+            point,
+            lower,
+            upper,
+            level,
+            selection,
+            basis=basis,
+            note=note,
+            fallback_upper=fallback,
         )
     waiting = waiting_runs(points)
     if waiting:
@@ -560,9 +615,10 @@ def calibrate(
                 "basis": pred.basis,
                 "point": pred.point,
                 "upper": pred.upper,
+                "fallback_upper": pred.fallback_upper,
             }
     for pred in predictions.values():
-        if pred.basis != "fitted":
+        if pred.basis != "fitted" or pred.upper is None:
             log.warning(f"{pred.metric}: {pred.note}", metric=pred.metric, basis=pred.basis)
 
     cpus, busiest = cpus_from_runs(points, threads)
@@ -575,21 +631,23 @@ def calibrate(
     plan = make_plan(
         cpus=cpus,
         peak_rss=predictions["peak_rss_bytes"].point,
-        peak_rss_upper=predictions["peak_rss_bytes"].upper,
+        peak_rss_upper=predictions["peak_rss_bytes"].plan_upper,
         wall_s=predictions["wall_s"].point,
-        wall_upper_s=predictions["wall_s"].upper,
+        wall_upper_s=predictions["wall_s"].plan_upper,
         mem_headroom=mem_headroom,
         time_headroom=time_headroom,
     )
     mem_sel = predictions["peak_rss_bytes"].selection.chosen
     wall_sel = predictions["wall_s"].selection.chosen
     stamp = time.strftime("%Y-%m-%d %H:%M %Z")
+    mem_pred, wall_pred = predictions["peak_rss_bytes"], predictions["wall_s"]
     note = (
         f"pipeprof calibrate {stamp}: {len(points)} runs on "
         f"{len(subs)} subsamples of {source.name}\n"
         f"predicted peak RSS {format_memory(plan.predicted_peak_rss_bytes)} "
-        f"(95% upper {format_memory(plan.predicted_peak_rss_upper_bytes)}), "
-        f"wall {plan.predicted_wall_s:.1f} s (95% upper {plan.predicted_wall_upper_s:.1f} s)"
+        f"({_upper_text(mem_pred, format_memory)}), "
+        f"wall {plan.predicted_wall_s:.1f} s "
+        f"({_upper_text(wall_pred, lambda v: f'{v:.1f} s')})"
     )
     for pred in predictions.values():
         if pred.basis != "fitted":
@@ -603,9 +661,9 @@ def calibrate(
             plan, job_name, size_mem_fit, size_wall_fit, x_bytes_full, note
         ),
         "snakemake_profile": snakemake_profile(plan, job_name, partition, account),
-        "nextflow_config": nextflow_config(plan, job_name.upper()),
+        "nextflow_config": nextflow_config(plan, job_name.upper(), note=note),
         "nextflow_directives": nextflow_directives(
-            plan, size_mem_fit, size_wall_fit, x_bytes_full, nf_input_var
+            plan, size_mem_fit, size_wall_fit, x_bytes_full, nf_input_var, note=note
         ),
     }
 
@@ -631,7 +689,11 @@ def calibrate(
                     "upper": pred.upper,
                     "actual": actual,
                     "ratio_predicted_to_actual": pred.point / actual if actual > 0 else None,
-                    "inside_interval": pred.lower <= actual <= pred.upper,
+                    "inside_interval": (
+                        None
+                        if pred.lower is None or pred.upper is None
+                        else pred.lower <= actual <= pred.upper
+                    ),
                 }
             validation["plan_covers_actual"] = {
                 "memory": plan.mem_bytes >= m.peak_rss_bytes,
@@ -658,6 +720,13 @@ def calibrate(
         provenance=prov,
         run_id=log.run_id,
     )
+
+
+def _upper_text(pred: Prediction, fmt: Callable[[float], str]) -> str:
+    """The upper bound as the emitted requests state it."""
+    if pred.upper is None:
+        return f"{NO_INTERVAL}; sized from {fmt(pred.plan_upper)}"
+    return f"95% upper {fmt(pred.upper)}"
 
 
 def _tools_in(template: Sequence[str]) -> list[str]:

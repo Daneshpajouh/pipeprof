@@ -220,3 +220,17 @@ def test_plateau_ending_inside_a_size_with_repeats() -> None:
     ys = [100.0, 101.0, 100.0, 102.0, 300.0, 310.0]
     plateau = find_plateau(xs, ys)
     assert plateau is not None and plateau.end_x == 2.0 and plateau.count == 4
+
+
+def test_two_points_have_no_interval() -> None:
+    from pipeprof.fit import predict_with_plateau
+
+    fit = fit_linear([1.0, 2.0], [10.0, 20.0])
+    assert not fit.has_interval
+    assert fit.interval(100.0) is None
+    pred = predict_with_plateau([1.0, 2.0], [10.0, 20.0], 100.0)
+    assert pred.lower is None and pred.upper is None
+    # Three points do have one, and it has width.
+    lo, hi = fit_linear([1.0, 2.0, 3.0], [10.0, 21.0, 29.0]).interval(100.0) or (0.0, 0.0)
+    assert hi > lo
+

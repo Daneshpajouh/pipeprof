@@ -39,6 +39,10 @@ class FitError(ValueError):
     """Raised when there are too few or unusable points to fit."""
 
 
+#: What reports and emitted requests say where a fit has no interval.
+NO_INTERVAL = "no interval (fewer than three runs)"
+
+
 # Student t quantile without SciPy.
 
 
@@ -154,21 +158,27 @@ class Fit:
         value = self.intercept + self.slope * self._tx(x)
         return math.exp(value) if self.kind is ModelKind.POWER else value
 
-    def interval(self, x: float, level: float = 0.95) -> tuple[float, float]:
+    @property
+    def has_interval(self) -> bool:
+        """Whether there is a residual variance estimate to build an interval from."""
+        return self.kind is ModelKind.CONSTANT or (self.dof >= 1 and self.sxx > 0)
+
+    def interval(self, x: float, level: float = 0.95) -> tuple[float, float] | None:
         """Two sided prediction interval for a new observation at ``x``.
 
-        With fewer than three points there is no residual variance estimate,
-        so the interval collapses to the point prediction.
+        With fewer than three points there is no residual variance estimate
+        and so no interval: the result is ``None``, never a zero width interval
+        that would look like certainty. Callers say so (:data:`NO_INTERVAL`)
+        and size requests from a bound instead.
         """
         if self.kind is ModelKind.CONSTANT:
             return self.intercept, self.intercept
+        if not self.has_interval:
+            return None
         centre = self.intercept + self.slope * self._tx(x)
-        if self.dof < 1 or self.sxx <= 0:
-            half = 0.0
-        else:
-            t = student_t_ppf(0.5 + level / 2.0, self.dof)
-            var_factor = 1.0 + 1.0 / self.n + (self._tx(x) - self.x_mean) ** 2 / self.sxx
-            half = t * self.residual_sd * math.sqrt(var_factor)
+        t = student_t_ppf(0.5 + level / 2.0, self.dof)
+        var_factor = 1.0 + 1.0 / self.n + (self._tx(x) - self.x_mean) ** 2 / self.sxx
+        half = t * self.residual_sd * math.sqrt(var_factor)
         if self.kind is ModelKind.POWER:
             return math.exp(centre - half), math.exp(centre + half)
         return max(0.0, centre - half), max(0.0, centre + half)
@@ -421,8 +431,9 @@ class PlateauPrediction:
 
     selection: Selection
     point: float
-    lower: float
-    upper: float
+    #: ``None`` when the fit has no interval (fewer than three runs).
+    lower: float | None
+    upper: float | None
     plateau: Plateau | None
     note: str = ""
 
@@ -448,12 +459,17 @@ def predict_with_plateau(
     largest = max(ys)
     if plateau is None:
         selection = select_model(xs, ys)
-        lower, upper = selection.chosen.interval(x_new, level)
-        return PlateauPrediction(selection, selection.chosen.predict(x_new), lower, upper, None)
+        found = selection.chosen.interval(x_new, level)
+        if found is None:
+            return PlateauPrediction(
+                selection, selection.chosen.predict(x_new), None, None, None, NO_INTERVAL
+            )
+        return PlateauPrediction(selection, selection.chosen.predict(x_new), *found, None)
     bound = proportional_bound(xs, ys, x_new)
     if plateau.whole:
         selection = select_model(xs, ys)
-        _, upper = selection.chosen.interval(x_new, level)
+        found = selection.chosen.interval(x_new, level)
+        upper = bound if found is None else max(found[1], bound)
         note = (
             f"flat: values within {plateau.spread:.1%} (under {FLAT_SPREAD:.0%}) over every "
             f"size, so no growth was seen to extrapolate; upper bound is the largest run "
@@ -461,11 +477,12 @@ def predict_with_plateau(
         )
         selection.reason += "; " + note
         point = max(selection.chosen.predict(x_new), largest)
-        return PlateauPrediction(selection, point, largest, max(upper, bound), plateau, note)
+        return PlateauPrediction(selection, point, largest, upper, plateau, note)
     tail = [(x, y) for x, y in zip(xs, ys, strict=True) if x >= plateau.end_x]
     selection = select_model([x for x, _ in tail], [y for _, y in tail])
     point = selection.chosen.predict(x_new)
-    lower, upper = selection.chosen.interval(x_new, level)
+    # Under three sizes in the tail there is no interval; it is replaced below.
+    lower, upper = selection.chosen.interval(x_new, level) or (largest, bound)
     note = (
         f"flat then rising: values within {plateau.spread:.1%} up to x={plateau.end_x:.6g}, "
         f"so the model is fitted from there on"

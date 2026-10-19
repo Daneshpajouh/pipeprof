@@ -331,6 +331,7 @@ def _fake_calibrate(
     monkeypatch: pytest.MonkeyPatch,
     usage: Callable[[float], tuple[float, float, float]],
     logger: Any = None,
+    fractions: Any = None,
 ) -> Any:
     """Run calibrate with measure_once replaced; ``usage(fraction)`` gives wall, CPU, RSS."""
     from pipeprof import calibrate as cal
@@ -348,7 +349,7 @@ def _fake_calibrate(
         vcf,
         ["tool", "{input}", "{output}"],
         workdir=tmp_path / "work",
-        fractions=FAKE_FRACTIONS,
+        fractions=fractions or FAKE_FRACTIONS,
         job_name="job",
         logger=logger,
     )
@@ -418,12 +419,16 @@ def test_zero_cpu_runs_give_wall_from_observed_range(
     preds = predict_metrics(runs, 1e9, "bytes")
     wall = preds["wall_s"]
     assert wall.basis == "mostly waiting"
-    assert math.isfinite(wall.point) and math.isfinite(wall.upper)
+    # The pure wait leaves two runs for the CPU fit, so there is no interval and
+    # the request is sized from the fallback bound.
+    assert wall.upper is None and wall.lower is None
+    assert math.isfinite(wall.point) and math.isfinite(wall.plan_upper)
     # Never a million-fold inflation: the bound stays near what the CPU model
     # and the observed walls allow.
-    assert wall.upper < 1000 * 30.0
-    assert wall.upper >= 30.0
+    assert wall.plan_upper < 1000 * 30.0
+    assert wall.plan_upper >= 30.0
     assert "no CPU" in wall.note
+    assert "no interval" in wall.note
 
     # Every run a pure wait: no CPU model to scale, so the observed range is the estimate.
     waits = [_run(f, w, 0.0, 60e6) for f, w in [(0.05, 3.0), (0.1, 9.0), (0.2, 5.0)]]
@@ -509,3 +514,35 @@ def test_derived_wall_never_above_proportional_walls() -> None:
     # upper bound at full size is the capped one.
     assert wall.selection.chosen.interval(1e9)[1] == pytest.approx(cap)
     assert wall.lower <= wall.point <= wall.upper
+
+
+def test_two_runs_give_no_interval_and_a_proportional_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pipeprof.fit import NO_INTERVAL
+
+    # Two runs fit any line exactly. Memory rises, but less than in proportion,
+    # so the largest run scaled to full size is above the two-point line.
+    def usage(f: float) -> tuple[float, float, float]:
+        return 100.0 * f, 100.0 * f, 50e6 + 2e8 * f
+
+    result = _fake_calibrate(tmp_path, monkeypatch, usage, fractions=[0.05, 0.1])
+    plan = result.plan
+    for metric in ("cpu_s", "peak_rss_bytes", "wall_s"):
+        pred = result.predictions[metric]
+        assert pred.lower is None and pred.upper is None, metric
+        assert NO_INTERVAL in pred.note
+        assert pred.interval_text(str) == NO_INTERVAL
+        assert pred.to_dict()["upper"] is None
+    mem = result.predictions["peak_rss_bytes"]
+    # The largest run (0.1 of the input, 70 MB) scaled to the whole input.
+    assert mem.fallback_upper == pytest.approx(70e6 * 10, rel=0.02)
+    assert mem.fallback_upper > mem.point
+    assert plan.predicted_peak_rss_upper_bytes == mem.fallback_upper
+    assert plan.mem_bytes >= mem.fallback_upper * plan.mem_headroom
+    for key in ("sbatch", "snakemake_rule", "nextflow_config", "nextflow_directives"):
+        assert NO_INTERVAL in result.snippets[key], key
+    assert "95% upper" not in result.snippets["sbatch"]
+    mem_mb, _ = _snakemake_values(result)
+    assert mem_mb * 10**6 >= mem.fallback_upper * plan.mem_headroom
+

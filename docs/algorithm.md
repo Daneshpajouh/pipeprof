@@ -66,6 +66,17 @@ bisection on the t CDF, which uses the regularized incomplete beta function
 quantiles against printed table values (for example `t(0.975, 3) = 3.1824`)
 to four decimals.
 
+With fewer than three runs (`n - 2 < 1`) a line passes through every point,
+there is no residual variance and so no interval. pipeprof then reports
+"no interval (fewer than three runs)" in the table, the JSON (`lower` and
+`upper` are null) and every emitted request, instead of a zero width interval
+that would read as certainty. The request is sized from the larger of the
+point prediction and the largest run scaled in proportion to input, times the
+headroom. The largest measured value alone is not used: it comes from a
+subsample and would under-request the full input. A step whose memory grows
+faster than its input can still exceed the proportional bound; use three or
+more fractions.
+
 ## Flat memory: no growth seen is not no growth
 
 On a cluster run of `bcftools sort`, peak RSS stayed flat up to the 10

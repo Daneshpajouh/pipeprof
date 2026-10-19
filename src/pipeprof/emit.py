@@ -182,7 +182,9 @@ def safety_factor(
     raw fit would ask for less at full size than the fixed request does.
     """
     point = fit.predict(x_full)
-    upper = max(fit.interval(x_full, level)[1], bound)
+    found = fit.interval(x_full, level)
+    # No interval (fewer than three runs): the plan's bound is all there is.
+    upper = bound if found is None else max(found[1], bound)
     ratio = upper / point if point > 0 else 1.0
     return headroom * max(1.0, ratio)
 
@@ -303,14 +305,16 @@ def _nf_time(seconds: int) -> str:
     return f"{minutes}.min"
 
 
-def nextflow_config(plan: ResourcePlan, process_name: str, max_retries: int = 2) -> str:
+def nextflow_config(
+    plan: ResourcePlan, process_name: str, max_retries: int = 2, note: str = ""
+) -> str:
     """Return a ``process`` block for ``nextflow.config`` with retry on kill signals.
 
     Exit statuses 137 (SIGKILL, the usual out of memory kill) and 140 and
     143 (signals sent at a time limit, depending on the site) trigger a retry
     with the request multiplied by ``task.attempt``.
     """
-    return (
+    return _nf_comment(note) + (
         "process {\n"
         f"    withName: '{process_name}' {{\n"
         f"        cpus          = {plan.cpus}\n"
@@ -329,6 +333,7 @@ def nextflow_directives(
     time_fit: Fit | None,
     x_full: float,
     input_var: str = "input_file",
+    note: str = "",
 ) -> str:
     """Return process directives whose memory and time scale with ``input_var.size()``.
 
@@ -357,4 +362,8 @@ def nextflow_directives(
         lines.append(f"time {{ {_nf_time(plan.time_s)} * task.attempt }}")
     lines.append("errorStrategy { task.exitStatus in [137, 140, 143] ? 'retry' : 'terminate' }")
     lines.append("maxRetries 2")
-    return "\n".join(lines) + "\n"
+    return _nf_comment(note) + "\n".join(lines) + "\n"
+
+
+def _nf_comment(note: str) -> str:
+    return "".join(f"// {line}\n" for line in note.splitlines())
