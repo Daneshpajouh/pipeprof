@@ -496,7 +496,14 @@ def calibrate(
     with log.step("fit", x_variable=x_variable, points=len(points)) as info:
         predictions = predict_metrics(points, x_full, x_variable, level)
         for metric, pred in predictions.items():
-            info[metric] = {"model": pred.basis, "point": pred.point, "upper": pred.upper}
+            # "model" is the curve kind the prediction comes from; "basis" says whether
+            # it was fitted directly, flat, after a hinge or derived from CPU.
+            info[metric] = {
+                "model": str(pred.selection.chosen.kind),
+                "basis": pred.basis,
+                "point": pred.point,
+                "upper": pred.upper,
+            }
     for pred in predictions.values():
         if pred.basis != "fitted":
             log.warning(f"{pred.metric}: {pred.note}", metric=pred.metric, basis=pred.basis)

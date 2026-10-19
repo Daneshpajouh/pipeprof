@@ -429,3 +429,19 @@ def test_zero_cpu_runs_give_wall_from_observed_range(
     assert wall.point == 9.0
     assert "no CPU" in wall.note
 
+
+
+def test_fit_log_names_the_model_kind(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from pipeprof.logkit import RunLogger, read_jsonl
+
+    def usage(f: float) -> tuple[float, float, float]:
+        return 100.0 * f, 100.0 * f, 50e6 + 1e9 * f
+
+    log_path = tmp_path / "cal.jsonl"
+    with RunLogger("cal", jsonl_path=log_path, console=None) as log:
+        _fake_calibrate(tmp_path, monkeypatch, usage, logger=log)
+    fit_records = [r for r in read_jsonl(log_path) if r.get("step") == "fit" and "wall_s" in r]
+    assert fit_records
+    entry = fit_records[-1]["wall_s"]
+    assert entry["model"] in {"linear", "power", "largest_measured"}
+    assert entry["basis"] == "fitted"
