@@ -192,7 +192,8 @@ def request_advice(step: str, tasks: Sequence[Task]) -> list[RequestAdvice]:
     # Task carries no exit code, so a failure close to its memory limit is
     # read as the resource cause, the same way an OOM kill would be.
     for t in tasks:
-        if t.status == "COMPLETED":
+        # A cached task completed in an earlier run; it is not a failure.
+        if t.status in {"COMPLETED", "CACHED"}:
             continue
         if (
             t.mem_request_bytes

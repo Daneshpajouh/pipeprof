@@ -114,6 +114,11 @@ whole run (every task in a Nextflow or Snakemake execution, or a plain TSV)
 to find where the time went and what to try next. It builds a timeline of
 tasks (`pipeprof.timeline`), then:
 
+Nextflow tasks reused with `-resume` (status `CACHED`) keep the times of the
+earlier run that computed them, so they are left out of everything below
+and counted on their own ("N cached task(s) left out").
+
+
 - **Critical path**: the chain of tasks that explains the run's wall time,
   with the waiting between them shown separately. Nextflow traces and
   Snakemake logs do not record a dependency graph, so the predecessor of

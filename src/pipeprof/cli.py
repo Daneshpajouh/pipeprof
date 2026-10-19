@@ -17,7 +17,7 @@ from rich.table import Table
 
 from pipeprof import __version__
 from pipeprof.advise import Advice, advise
-from pipeprof.bottleneck import BottleneckReport, analyse
+from pipeprof.bottleneck import BottleneckReport, analyse, live_tasks
 from pipeprof.bound import BoundLabel, label_steps
 from pipeprof.calibrate import (
     DEFAULT_FRACTIONS,
@@ -313,6 +313,14 @@ def _analysis_markdown(
         "",
         f"Source: {source}",
         "",
+    ]
+    if report.cached_tasks:
+        out += [
+            f"{report.cached_tasks} cached task(s) left out: their times are from the "
+            "earlier run that computed them.",
+            "",
+        ]
+    out += [
         "## Critical path",
         "",
         f"Method: {cp.method}.",
@@ -400,6 +408,7 @@ def _analysis_json(
         "queue_wait_total_s": report.queue_wait_total_s,
         "retries": [dataclasses.asdict(r) for r in report.retries],
         "retry_lost_s": report.retry_lost_s,
+        "cached_tasks": report.cached_tasks,
         "bound_labels": [dataclasses.asdict(b) for b in labels],
         "advice": {
             "first_step": dataclasses.asdict(advice.first_step) if advice.first_step else None,
@@ -461,11 +470,14 @@ def analyze_cmd(
         console.print(f"Tool readings matched {matched} of {len(tasks)} tasks")
 
     report = analyse(tasks, cpus_available=cpus)
+    # Cached tasks carry an earlier run's times and usage; labels and advice
+    # describe this run, as the timeline analysis does.
+    ran = live_tasks(tasks)
     by_step: dict[str, list[Task]] = {}
-    for t in tasks:
+    for t in ran:
         by_step.setdefault(t.step, []).append(t)
     labels = label_steps(by_step)
-    recommendation = advise(tasks, report.critical_path, labels)
+    recommendation = advise(ran, report.critical_path, labels)
 
     outdir.mkdir(parents=True, exist_ok=True)
     md = _analysis_markdown(source, report, labels, recommendation)

@@ -96,6 +96,8 @@ class BottleneckReport:
     queue_wait_total_s: float
     retries: list[Retry]
     retry_lost_s: float = 0.0
+    #: Nextflow tasks reused with -resume, left out of every calculation above.
+    cached_tasks: int = 0
 
 
 # Critical path
@@ -314,13 +316,25 @@ def retries(tasks: Sequence[Task]) -> tuple[list[Retry], float]:
     return out, lost_total
 
 
+def live_tasks(tasks: Sequence[Task]) -> list[Task]:
+    """The tasks that ran in this run: every task but the cached ones."""
+    return [t for t in tasks if t.status != "CACHED"]
+
+
 def analyse(
     tasks: Sequence[Task],
     cpus_available: int | None = None,
     dependencies: Mapping[str, Sequence[str]] | None = None,
     efficiency_threshold: float = 0.5,
 ) -> BottleneckReport:
-    """Run every bottleneck calculation and collect the result."""
+    """Run every bottleneck calculation and collect the result.
+
+    Cached tasks (Nextflow ``-resume``) are left out and only counted: their
+    times are from the run that computed them, maybe days earlier, and would
+    stretch this run's critical path and idle time by that much.
+    """
+    cached = sum(1 for t in tasks if t.status == "CACHED")
+    tasks = live_tasks(tasks)
     path = critical_path(tasks, dependencies)
     shares = step_shares(tasks, path)
     eff = (
@@ -341,4 +355,5 @@ def analyse(
         queue_wait_total_s=wait_total,
         retries=retry_list,
         retry_lost_s=retry_lost,
+        cached_tasks=cached,
     )

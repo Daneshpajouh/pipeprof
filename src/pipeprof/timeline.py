@@ -128,9 +128,9 @@ def tasks_from_nextflow_trace(text: str) -> list[Task]:
                 end=_epoch(complete),
                 attempt=attempt,
                 cpus=_int_or_none(row.get("cpus")),
-                status={"COMPLETED": "COMPLETED", "CACHED": "COMPLETED"}.get(
-                    status, status or "UNKNOWN"
-                ),
+                # CACHED stays CACHED: on -resume the row carries the earlier run's
+                # times, so the analyses leave it out rather than read it as run now.
+                status=status or "UNKNOWN",
                 cpu_percent=parse_percent(row["%cpu"]) if row.get("%cpu") else None,
                 max_rss_bytes=parse_nextflow_memory(row["peak_rss"])
                 if row.get("peak_rss")

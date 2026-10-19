@@ -120,3 +120,44 @@ def test_analyze_names_each_missing_input(data: Path, tmp_path: Path) -> None:
     trace = data / "nextflow_trace_raw.txt"
     args = ["analyze", "--nextflow-trace", str(trace), "--usage", str(missing)]
     _assert_missing_reported([*args, *out], missing)
+
+
+def test_analyze_leaves_cached_tasks_out(tmp_path: Path) -> None:
+    from pipeprof.bottleneck import analyse
+    from pipeprof.timeline import tasks_from_nextflow_trace
+
+    # A -resume run: ALIGN was cached from a run a day earlier (its times are
+    # that run's), SORT and STATS ran now. The day-old times must not stretch
+    # the critical path, idle time or efficiency of this run.
+    day = 86_400_000
+    now = 1_760_000_000_000
+    header = (
+        "task_id\tprocess\tname\tstatus\texit\tattempt\tsubmit\tstart\trealtime\t%cpu\t"
+        "peak_rss\tcpus\tmemory\ttime\n"
+    )
+    rows = [
+        f"1\tALIGN\tALIGN (s1)\tCACHED\t0\t1\t{now - day}\t{now - day}\t60000\t95\t1000\t1\t-\t-",
+        f"2\tSORT\tSORT (s1)\tCOMPLETED\t0\t1\t{now}\t{now}\t20000\t95\t1000\t1\t-\t-",
+        f"3\tSTATS\tSTATS (s1)\tCOMPLETED\t0\t1\t{now + 20000}\t{now + 20000}\t10000\t95\t1000\t1\t-\t-",
+    ]
+    text = header + "\n".join(rows) + "\n"
+    tasks = tasks_from_nextflow_trace(text)
+    assert [t.status for t in tasks] == ["CACHED", "COMPLETED", "COMPLETED"]
+    report = analyse(tasks, cpus_available=1)
+    assert report.cached_tasks == 1
+    assert report.critical_path.wall_s == 30.0
+    assert report.idle_total_s == 0.0
+    assert {s.step for s in report.step_shares} == {"SORT", "STATS"}
+    assert report.parallel_efficiency is not None
+    assert report.parallel_efficiency.average == 1.0
+
+    trace = tmp_path / "trace.txt"
+    trace.write_text(text)
+    out = tmp_path / "an"
+    result = runner.invoke(
+        app, ["analyze", "--nextflow-trace", str(trace), "--cpus", "1", "--outdir", str(out)]
+    )
+    assert result.exit_code == 0, result.output
+    assert "1 cached task(s) left out" in (out / "analysis.md").read_text()
+    data_json = json.loads((out / "analysis.json").read_text())
+    assert data_json["cached_tasks"] == 1
