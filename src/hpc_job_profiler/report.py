@@ -133,10 +133,12 @@ class Report:
     totals: Totals
     thresholds: Thresholds
     sources: list[str]
+    run_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """JSON ready form."""
         return {
+            "run_id": self.run_id,
             "sources": self.sources,
             "thresholds": asdict(self.thresholds),
             "totals": asdict(self.totals),
@@ -294,6 +296,7 @@ def build_report(
     records: Sequence[TaskRecord],
     thresholds: Thresholds | None = None,
     sources: Sequence[str] = (),
+    run_id: str = "",
 ) -> Report:
     """Analyse records and build the report."""
     limits = thresholds or Thresholds()
@@ -318,7 +321,7 @@ def build_report(
         if r.queue_wait_s is not None:
             totals.queue_wait_hours += r.queue_wait_s / 3600
     return Report(
-        metrics, recommendations, summarise_arrays(metrics), totals, limits, list(sources)
+        metrics, recommendations, summarise_arrays(metrics), totals, limits, list(sources), run_id
     )
 
 
@@ -414,6 +417,7 @@ def to_markdown(report: Report) -> str:
         "# Job efficiency report",
         "",
         f"Sources: {', '.join(report.sources) or 'n/a'}",
+        f"Run ID: {report.run_id or 'n/a'}",
         "",
         f"Tasks: {t.tasks}, not completed: {t.failed}.",
         f"Core hours allocated {t.core_hours_allocated:.3f}, used {t.core_hours_used:.3f}.",

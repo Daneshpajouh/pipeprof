@@ -103,10 +103,12 @@ def tool_version(tool: str, timeout: float = 10.0) -> str | None:
     if exe is None:
         return None
     try:
+        # errors="replace": samtools 1.21 on Debian prints a non UTF-8 byte in --version.
         result = subprocess.run(
             [exe, "--version"],
             capture_output=True,
             text=True,
+            errors="replace",
             timeout=timeout,
             check=False,
         )

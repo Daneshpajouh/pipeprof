@@ -122,7 +122,7 @@ def test_snakemake_real_macos_run(data: Path) -> None:
     assert sort_rec.time_s is not None
 
 
-def test_snakemake_benchmark_with_values_and_mavis_resources() -> None:
+def test_snakemake_benchmark_with_values_and_time_limit_seconds() -> None:
     text = (
         "s\th:m:s\tmax_rss\tmax_vms\tmax_uss\tmax_pss\tio_in\tio_out\tmean_load\tcpu_time\t"
         "jobid\trule_name\twildcards\tparams\tthreads\tcpu_usage\tresources\tinput_size_mb\n"

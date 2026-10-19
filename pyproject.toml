@@ -38,6 +38,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.10",
     "types-psutil",
+    "hypothesis>=6",
 ]
 docs = ["mkdocs>=1.6", "mkdocs-material>=9.5"]
 

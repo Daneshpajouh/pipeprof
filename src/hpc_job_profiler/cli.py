@@ -19,7 +19,7 @@ from hpc_job_profiler.calibrate import (
     calibrate,
     write_outputs,
 )
-from hpc_job_profiler.logkit import RunLogger
+from hpc_job_profiler.logkit import RunLogger, new_run_id, utc_now_iso
 from hpc_job_profiler.provenance import capture
 from hpc_job_profiler.records import read_sources
 from hpc_job_profiler.report import Thresholds, build_report, to_html, to_json, to_markdown
@@ -188,7 +188,7 @@ def watch_cmd(
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("a", encoding="utf-8") as handle:
-        sink = JsonlSink(handle)
+        sink = JsonlSink(handle, new_run_id())
         if slurm_job is not None:
             try:
                 n = watch_slurm(slurm_job, sink, config, interval, max_seconds)
@@ -202,7 +202,7 @@ def watch_cmd(
             proc = subprocess.Popen(command)
             n = watch_pid(proc.pid, sink, config, interval, max_seconds)
             code = proc.wait()
-            sink.write({"type": "end", "returncode": code})
+            sink.write({"type": "end", "ts": utc_now_iso(), "returncode": code})
     console.print(f"{n} samples written to {out}")
 
 
@@ -223,6 +223,7 @@ def report_cmd(
         list[Path], typer.Option(help="Snakemake benchmark file or folder.")
     ] = [],  # noqa: B006
     snakemake_log: Annotated[list[Path], typer.Option(help="Snakemake run log.")] = [],  # noqa: B006
+    watch_log: Annotated[list[Path], typer.Option(help="JSON lines log from hjp watch.")] = [],  # noqa: B006
     from_slurm: Annotated[
         list[str], typer.Option(help="Job ID to read directly with sacct.")
     ] = [],  # noqa: B006
@@ -235,7 +236,8 @@ def report_cmd(
     if show_sacct:
         typer.echo(" ".join(sacct_command(start="YYYY-MM-DD")))
         raise typer.Exit()
-    sources = [str(p) for p in [*sacct, *nextflow_trace, *snakemake_benchmarks, *snakemake_log]]
+    all_files = [*sacct, *nextflow_trace, *snakemake_benchmarks, *snakemake_log, *watch_log]
+    sources = [str(p) for p in all_files]
     sacct_files = list(sacct)
     if from_slurm:
         try:
@@ -248,12 +250,14 @@ def report_cmd(
         saved.write_text(text, encoding="utf-8")
         sacct_files.append(saved)
         sources.append(f"sacct jobs {','.join(from_slurm)}")
-    records = read_sources(sacct_files, nextflow_trace, snakemake_benchmarks, snakemake_log)
+    records = read_sources(
+        sacct_files, nextflow_trace, snakemake_benchmarks, snakemake_log, watch_log
+    )
     if not records:
         console.print("[red]no records found in the given files[/red]")
         raise typer.Exit(2)
     thresholds = Thresholds(cpu_efficiency=cpu_threshold, mem_efficiency=mem_threshold)
-    report = build_report(records, thresholds, sources)
+    report = build_report(records, thresholds, sources, run_id=new_run_id())
     outdir.mkdir(parents=True, exist_ok=True)
     (outdir / "report.md").write_text(to_markdown(report), encoding="utf-8")
     (outdir / "report.html").write_text(to_html(report), encoding="utf-8")

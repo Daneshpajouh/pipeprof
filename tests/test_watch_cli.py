@@ -5,6 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from rich.console import Console
 from typer.testing import CliRunner
 
@@ -46,7 +47,7 @@ def test_watch_pid_writes_samples(tmp_path: Path) -> None:
         n = watch_pid(proc.pid, JsonlSink(handle), AlertConfig(mem_limit_bytes=10), 0.1)
     proc.wait()
     records = read_watch_log(out)
-    assert n >= 3 and records[0]["type"] == "sample"
+    assert n >= 3 and records[0]["type"] == "start" and records[1]["type"] == "sample"
     assert any(r.get("alert") == "memory_near_limit" for r in records)
 
 
@@ -116,7 +117,9 @@ def test_cli_calibrate(tmp_path: Path) -> None:
     assert (out / "hjp.log.jsonl").exists()
     bad = runner.invoke(app, ["calibrate", str(vcf), "--outdir", str(out), "--", "false"])
     assert bad.exit_code == 2
-    worse = runner.invoke(app, ["calibrate", str(vcf), "--fractions", "a,b", "--", "true"])
+    worse = runner.invoke(
+        app, ["calibrate", str(vcf), "--outdir", str(out), "--fractions", "a,b", "--", "true"]
+    )
     assert worse.exit_code != 0
 
 
@@ -149,7 +152,7 @@ def test_cli_report_files_and_slurm(data: Path, tmp_path: Path, slurm_shim: Path
     assert runner.invoke(app, ["report", "--sacct", str(empty)]).exit_code == 2
 
 
-def test_cli_watch_modes(tmp_path: Path, slurm_shim: Path, monkeypatch: object) -> None:
+def test_cli_watch_modes(tmp_path: Path, slurm_shim: Path) -> None:
     out = tmp_path / "w.jsonl"
     r = runner.invoke(app, ["watch", "--out", str(out), "--slurm-job", "4242", "--interval", "0"])
     assert r.exit_code == 0, r.output
@@ -198,3 +201,70 @@ def test_cli_watch_modes(tmp_path: Path, slurm_shim: Path, monkeypatch: object) 
         ).exit_code
         == 2
     )
+
+
+def test_run_id_links_calibrate_watch_and_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HJP_RUN_ID", "job-42")
+    vcf = write_vcf(tmp_path / "in.vcf", 2000)
+    cal = runner.invoke(
+        app,
+        [
+            "calibrate",
+            str(vcf),
+            "--outdir",
+            str(tmp_path / "cal"),
+            "--fractions",
+            "0.2,0.4,0.6",
+            "--shell",
+            "--",
+            "grep -c . {input} > {output}",
+        ],
+    )
+    assert cal.exit_code == 0, cal.output
+    assert json.loads((tmp_path / "cal" / "calibration.json").read_text())["run_id"] == "job-42"
+    watch_log = tmp_path / "w.jsonl"
+    w = runner.invoke(
+        app,
+        [
+            "watch",
+            "--out",
+            str(watch_log),
+            "--interval",
+            "0.1",
+            "--mem-limit",
+            "1G",
+            "--cpus",
+            "2",
+            "--",
+            PY,
+            "-c",
+            "import time; time.sleep(0.4)",
+        ],
+    )
+    assert w.exit_code == 0
+    lines = read_watch_log(watch_log)
+    assert {r["run_id"] for r in lines} == {"job-42"}
+    assert lines[0]["type"] == "start" and lines[0]["mem_limit_bytes"] == 1024**3
+    rep = runner.invoke(
+        app, ["report", "--watch-log", str(watch_log), "--outdir", str(tmp_path / "rep")]
+    )
+    assert rep.exit_code == 0, rep.output
+    report = json.loads((tmp_path / "rep" / "report.json").read_text())
+    assert report["run_id"] == "job-42"
+    task = report["tasks"][0]["record"]
+    assert task["source"] == "watch" and task["alloc_cpus"] == 2 and task["state"] == "COMPLETED"
+
+
+def test_watch_log_without_samples_gives_no_record() -> None:
+    from hpc_job_profiler.records import parse_watch_log
+
+    assert parse_watch_log([{"type": "start"}]) == []
+    rec = parse_watch_log(
+        [
+            {"type": "sample", "rss_bytes": 5, "elapsed_s": 2, "cpu_seconds": 1, "pid": 7},
+            {"type": "end", "returncode": 3},
+        ]
+    )[0]
+    assert rec.state == "FAILED" and rec.exit_code == 3 and rec.job_id == "7"

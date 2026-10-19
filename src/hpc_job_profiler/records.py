@@ -22,6 +22,7 @@ import ast
 import csv
 import datetime as dt
 import io
+import json
 import re
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
@@ -368,7 +369,7 @@ def _literal_dict(text: str | None) -> dict[str, Any]:
 
 
 def _snakemake_time_limit(resources: dict[str, Any]) -> float | None:
-    """``runtime`` is minutes in Snakemake 8+; MAVIS (bcgsc/mavis) uses ``time_limit`` seconds."""
+    """``runtime`` is minutes in Snakemake 8+; some workflows request ``time_limit`` in seconds."""
     if "runtime" in resources:
         try:
             return float(resources["runtime"]) * 60.0
@@ -496,11 +497,41 @@ def apply_snakemake_log(records: list[TaskRecord], jobs: dict[str, SnakemakeJob]
             record.time_limit_s = _snakemake_time_limit(dict(job.resources))
 
 
+def parse_watch_log(records: list[dict[str, Any]], name: str = "") -> list[TaskRecord]:
+    """Summarise an ``hjp watch`` log as one record: peak RSS, CPU and elapsed against limits."""
+    start: dict[str, Any] = next((r for r in records if r.get("type") == "start"), {})
+    samples = [r for r in records if r.get("type") == "sample"]
+    end: dict[str, Any] = next((r for r in reversed(records) if r.get("type") == "end"), {})
+    if not samples:
+        return []
+    last = samples[-1]
+    code = end.get("returncode")
+    state = str(end.get("state") or ("COMPLETED" if code in (0, None) else "FAILED"))
+    command = str(start.get("command") or "")
+    return [
+        TaskRecord(
+            source="watch",
+            job_id=str(start.get("job_id") or start.get("pid") or last.get("pid") or ""),
+            name=name or (Path(command.split(maxsplit=1)[0]).name if command else "watched"),
+            state=state,
+            exit_code=code if isinstance(code, int) else None,
+            elapsed_s=float(last.get("elapsed_s") or 0.0),
+            cpu_time_s=float(last.get("cpu_seconds") or 0.0),
+            alloc_cpus=start.get("cpus"),
+            req_mem_bytes=start.get("mem_limit_bytes"),
+            max_rss_bytes=max(int(r.get("rss_bytes") or 0) for r in samples),
+            time_limit_s=start.get("time_limit_s"),
+            notes=[f"run_id {start.get('run_id', '')}"],
+        )
+    ]
+
+
 def read_sources(
     sacct: Iterable[Path] = (),
     nextflow: Iterable[Path] = (),
     snakemake_benchmarks: Iterable[Path] = (),
     snakemake_logs: Iterable[Path] = (),
+    watch_logs: Iterable[Path] = (),
 ) -> list[TaskRecord]:
     """Read every given file. Benchmark folders are searched for ``*.tsv`` and ``*.txt``."""
     records: list[TaskRecord] = []
@@ -520,4 +551,7 @@ def read_sources(
     for log in snakemake_logs:
         apply_snakemake_log(bench_records, parse_snakemake_log(log.read_text(encoding="utf-8")))
     records.extend(bench_records)
+    for path in watch_logs:
+        lines = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
+        records.extend(parse_watch_log([x for x in lines if isinstance(x, dict)]))
     return records

@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Fetch the public inputs used for the real calibration runs in docs/results.md.
 #
-# Raw data goes under DATA_DIR and never into the repository.
-# Every file is checked with SHA-256 and recorded in docs/data_sources.md by hand.
-#
-# Usage: DATA_DIR=/path/to/data scripts/fetch_data.sh
+# Usage: scripts/fetch_data.sh [DATA_DIR]
+# DATA_DIR defaults to ./data (gitignored). The hashes printed at the end are
+# the ones recorded in docs/data_sources.md.
 set -euo pipefail
 
-DATA_DIR="${DATA_DIR:-/Volumes/MXFAST/data/portfolio}"
+DATA_DIR="${1:-${DATA_DIR:-data}}"
+mkdir -p "${DATA_DIR}"
+DATA_DIR="$(cd "${DATA_DIR}" && pwd)"
 CLINVAR_DIR="${DATA_DIR}/clinvar"
 BAM_DIR="${DATA_DIR}/hpc-job-profiler/bam"
 mkdir -p "${CLINVAR_DIR}" "${BAM_DIR}"

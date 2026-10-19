@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any
 
-from hpc_job_profiler.logkit import utc_now_iso
+from hpc_job_profiler.logkit import new_run_id, utc_now_iso
 from hpc_job_profiler.measure import TreeSample, TreeSampler
 from hpc_job_profiler.slurm import TERMINAL_STATES, query_limits, query_sstat
 
@@ -124,15 +124,34 @@ class AlertEngine:
 
 
 class JsonlSink:
-    """Append samples and alerts to a JSON lines file (or any text stream)."""
+    """Append records to a JSON lines stream, each tagged with the run ID."""
 
-    def __init__(self, handle: IO[str]) -> None:
+    def __init__(self, handle: IO[str], run_id: str | None = None) -> None:
         self.handle = handle
+        self.run_id = run_id or new_run_id()
 
     def write(self, record: dict[str, Any]) -> None:
-        """Write one record and flush, so ``hjp tail`` sees it at once."""
-        self.handle.write(json.dumps(record) + "\n")
+        # Flush every line so `hjp tail` sees it at once.
+        self.handle.write(json.dumps({"run_id": self.run_id, **record}) + "\n")
         self.handle.flush()
+
+    def start(self, config: AlertConfig, **fields: Any) -> None:
+        """Write the ``start`` record: what is watched and against which limits."""
+        self.write(
+            {
+                "type": "start",
+                "ts": utc_now_iso(),
+                "mem_limit_bytes": config.mem_limit_bytes,
+                "cpus": config.cpus,
+                "thresholds": {
+                    "mem_warn": config.mem_warn,
+                    "cpu_underuse": config.cpu_underuse,
+                    "window_s": config.window_s,
+                    "stall_s": config.stall_s,
+                },
+                **fields,
+            }
+        )
 
 
 def _io_total(sample: TreeSample) -> int | None:
@@ -152,6 +171,7 @@ def watch_pid(
     """Sample a local process tree until it exits; return the number of samples."""
     sampler = TreeSampler(pid)
     engine = AlertEngine(config)
+    sink.start(config, source="local", pid=pid, command=" ".join(sampler.root.cmdline()))
     count = 0
     started = time.monotonic()
     prev: TreeSample | None = None
@@ -200,6 +220,7 @@ def watch_slurm(
     if config.cpus is None:
         config.cpus = limits.alloc_cpus or None
     engine = AlertEngine(config)
+    sink.start(config, source="slurm", job_id=job_id, time_limit_s=limits.time_limit_s)
     started = time.monotonic()
     count = 0
     while True:

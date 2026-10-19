@@ -386,7 +386,7 @@ def calibrate(
             }
             info.update(validation["plan_covers_actual"])
 
-    prov = capture(inputs=[], tools=_tools_in(template)).to_dict()
+    prov = capture(inputs=[source], tools=_tools_in(template)).to_dict()
     prov["input"] = {"path": str(source), "size_bytes": full.size_bytes, "records": full.records}
     return CalibrationResult(
         command_template=list(template),
