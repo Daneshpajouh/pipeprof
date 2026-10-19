@@ -129,7 +129,13 @@ filesystem can stretch a run on that node.
 The Snakemake and Nextflow snippets keep the fitted curve as a function of
 input size (`input.size_mb`, `file.size()`), multiply by a safety factor
 equal to the headroom times `upper / point` at the calibrated size, and double
-the request on each retry (`attempt`, `task.attempt`).
+the request on each retry (`attempt`, `task.attempt`). `upper` is the plan's
+upper bound, not the raw fit's: for a flat memory series it is the
+proportional bound, after a hinge with thin evidence the widened bound. So at
+the full input size the formula asks for at least what the fixed request
+asks for. When wall time is mostly waiting, the curve is the CPU model
+divided by the lowest cores-busy ratio, so the runtime formula gives wall
+minutes, not CPU minutes.
 
 ## Validation on real runs
 

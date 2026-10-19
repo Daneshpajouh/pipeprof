@@ -28,7 +28,7 @@ from pipeprof.emit import (
     snakemake_profile,
     snakemake_rule,
 )
-from pipeprof.fit import Selection, predict_with_plateau, select_model
+from pipeprof.fit import Selection, predict_with_plateau, scale_fit, select_model
 from pipeprof.logkit import RunLogger
 from pipeprof.measure import Measurement, run_measured
 from pipeprof.provenance import capture
@@ -289,13 +289,26 @@ def _wall_from_cpu(
         f"fitted; observed wall {min(walls):.2f} to {max(walls):.2f} s; time is the CPU "
         f"model divided by the lowest cores-busy ratio"
     )
+    # The wall model is the CPU model scaled by 1 / worst, so the Snakemake and
+    # Nextflow runtime formulas built from it give wall minutes, as the fixed
+    # sbatch time does; reusing the CPU selection would emit CPU minutes.
+    cpu_fit = cpu.selection.chosen
+    wall_fit = scale_fit(cpu_fit, 1.0 / worst)
+    selection = Selection(
+        wall_fit,
+        {wall_fit.kind: wall_fit},
+        dict(cpu.selection.cv_scores),
+        dict(cpu.selection.cv_errors),
+        f"mostly waiting: CPU model ({cpu_fit.kind}) divided by the lowest cores-busy "
+        f"ratio {worst:.3f}",
+    )
     return Prediction(
         "wall_s",
         cpu.point / worst,
         cpu.lower / best,
         cpu.upper / worst,
         cpu.level,
-        cpu.selection,
+        selection,
         basis="mostly waiting",
         note=note,
         observed_range=(min(walls), max(walls)),
@@ -467,6 +480,9 @@ def calibrate(
         f"(95% upper {format_memory(plan.predicted_peak_rss_upper_bytes)}), "
         f"wall {plan.predicted_wall_s:.1f} s (95% upper {plan.predicted_wall_upper_s:.1f} s)"
     )
+    for pred in predictions.values():
+        if pred.basis != "fitted":
+            note += f"\n{pred.metric}: {pred.basis} ({pred.selection.reason.split(';')[0]})"
     x_bytes_full = float(full.size_bytes)
     size_mem_fit = mem_sel if x_variable == "bytes" else None
     size_wall_fit = wall_sel if x_variable == "bytes" else None

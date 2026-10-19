@@ -336,6 +336,23 @@ def select_model(
     return Selection(fits[chosen_kind], fits, scores, errors, reason + note)
 
 
+
+def scale_fit(fit: Fit, factor: float) -> Fit:
+    """The same model with every prediction and bound multiplied by ``factor``.
+
+    Used for wall time derived from CPU time (wall = CPU / cores busy): the
+    derived wall model keeps the CPU model's shape and relative interval, so
+    workflow formulas built from it scale wall seconds, not CPU seconds.
+    """
+    if factor <= 0:
+        raise ValueError("scale factor must be positive")
+    if fit.kind is ModelKind.POWER:
+        # log(y * f) = log(c) + log(f) + k * log(x): only the intercept moves.
+        intercept, slope, sd = fit.intercept + math.log(factor), fit.slope, fit.residual_sd
+    else:
+        intercept, slope, sd = fit.intercept * factor, fit.slope * factor, fit.residual_sd * factor
+    return Fit(fit.kind, intercept, slope, fit.n, sd, fit.x_mean, fit.sxx)
+
 # Plateaus: flat small runs, then growth.
 
 #: Relative spread, (max - min) / max, under which a run of points counts as flat.

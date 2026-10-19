@@ -170,12 +170,29 @@ def rescale(fit: Fit, x_unit: float, y_unit: float, safety: float) -> ScaledForm
     )
 
 
-def safety_factor(fit: Fit, x_full: float, headroom: float, level: float = 0.95) -> float:
-    """Headroom times the ratio of the upper prediction bound to the point prediction at x_full."""
+def safety_factor(
+    fit: Fit, x_full: float, headroom: float, level: float = 0.95, bound: float = 0.0
+) -> float:
+    """Headroom times the ratio of the upper bound to the point prediction at x_full.
+
+    The upper bound is the larger of the fit's own interval and ``bound``, the
+    plan's bound. The plan can be wider than the raw fit (a flat memory series
+    bounded in proportion to input, a thin tail after a hinge, a prediction
+    raised to the largest measured run), and a formula that only covered the
+    raw fit would ask for less at full size than the fixed request does.
+    """
     point = fit.predict(x_full)
-    upper = fit.interval(x_full, level)[1]
+    upper = max(fit.interval(x_full, level)[1], bound)
     ratio = upper / point if point > 0 else 1.0
     return headroom * max(1.0, ratio)
+
+
+def _mem_bound(plan: ResourcePlan) -> float:
+    return max(plan.predicted_peak_rss_bytes, plan.predicted_peak_rss_upper_bytes)
+
+
+def _time_bound(plan: ResourcePlan) -> float:
+    return max(plan.predicted_wall_s, plan.predicted_wall_upper_s)
 
 
 def snakemake_rule(
@@ -196,11 +213,12 @@ def snakemake_rule(
     lines.append("import math")
     lines.append("")
     if mem_fit is not None:
-        mem = rescale(mem_fit, MIB, MB, safety_factor(mem_fit, x_full, plan.mem_headroom))
+        mem_safety = safety_factor(mem_fit, x_full, plan.mem_headroom, bound=_mem_bound(plan))
+        mem = rescale(mem_fit, MIB, MB, mem_safety)
         lines += [
             f"def {rule_name}_mem_mb(wildcards, input, attempt):",
-            f"    # {mem_fit.kind} fit; safety factor {mem.safety:.3f} covers the 95% upper bound",
-            "    # and headroom; each retry doubles the request.",
+            f"    # {mem_fit.kind} fit; safety factor {mem.safety:.3f} covers the plan's upper",
+            "    # bound and headroom; each retry doubles the request.",
             "    size_mb = max(input.size_mb, 1e-6)",
             f"    return max(256, math.ceil(({mem.python('size_mb')}) * {mem.safety:.4f})"
             " * 2 ** (attempt - 1))",
@@ -210,7 +228,8 @@ def snakemake_rule(
     else:
         mem_ref = f"lambda wildcards, attempt: {plan.mem_mb} * 2 ** (attempt - 1)"
     if time_fit is not None:
-        tm = rescale(time_fit, MIB, 60.0, safety_factor(time_fit, x_full, plan.time_headroom))
+        tm_safety = safety_factor(time_fit, x_full, plan.time_headroom, bound=_time_bound(plan))
+        tm = rescale(time_fit, MIB, 60.0, tm_safety)
         lines += [
             f"def {rule_name}_runtime(wildcards, input, attempt):",
             f"    # {time_fit.kind} fit in minutes; safety factor {tm.safety:.3f}.",
@@ -319,7 +338,8 @@ def nextflow_directives(
     lines = [f"cpus {plan.cpus}"]
     size = f"({input_var}.size() / 1048576.0)"
     if mem_fit is not None:
-        mem = rescale(mem_fit, MIB, MIB, safety_factor(mem_fit, x_full, plan.mem_headroom))
+        mem_safety = safety_factor(mem_fit, x_full, plan.mem_headroom, bound=_mem_bound(plan))
+        mem = rescale(mem_fit, MIB, MIB, mem_safety)
         lines.append(
             f"memory {{ 1.MB * Math.max(256L, Math.ceil(({mem.groovy(size)}) * {mem.safety:.4f})"
             " as long) * task.attempt }"
@@ -327,7 +347,8 @@ def nextflow_directives(
     else:
         lines.append(f"memory {{ {_nf_memory(plan.mem_bytes)} * task.attempt }}")
     if time_fit is not None:
-        tm = rescale(time_fit, MIB, 60.0, safety_factor(time_fit, x_full, plan.time_headroom))
+        tm_safety = safety_factor(time_fit, x_full, plan.time_headroom, bound=_time_bound(plan))
+        tm = rescale(time_fit, MIB, 60.0, tm_safety)
         lines.append(
             f"time {{ 1.min * Math.max(5L, Math.ceil(({tm.groovy(size)}) * {tm.safety:.4f})"
             " as long) * task.attempt }"

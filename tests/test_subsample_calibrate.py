@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import gzip
 import json
+import math
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -309,3 +312,89 @@ def test_waiting_runs_use_the_cpu_model() -> None:
     busy_runs = [_run(0.05, 2.0, 1.7, 60e6), fast, _run(0.2, 8.1, 6.8, 120e6)]
     busy = predict_metrics(busy_runs, 1e9, "bytes")
     assert busy["wall_s"].basis == "fitted"
+
+
+# Calibration on synthetic measurements: the command is never run; measure_once
+# returns made-up numbers per fraction so the emitted snippets can be checked
+# against the plan they come from.
+
+FAKE_FRACTIONS = [0.01, 0.02, 0.05, 0.1, 0.2]
+
+
+def _fake_calibrate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    usage: Callable[[float], tuple[float, float, float]],
+    logger: Any = None,
+) -> Any:
+    """Run calibrate with measure_once replaced; ``usage(fraction)`` gives wall, CPU, RSS."""
+    from pipeprof import calibrate as cal
+    from pipeprof.measure import Measurement
+
+    def fake_measure(template: Any, input_path: Path, workdir: Path, tag: str, **_: Any) -> Any:
+        fraction = 0.01 if tag == "warmup" else float(tag.split("_")[0])
+        wall, cpu, rss = usage(fraction)
+        peak = int(rss)
+        return Measurement("x", 0, wall, cpu, 0.0, peak, peak, peak, None, None, 0, 0, 1, 0.05)
+
+    monkeypatch.setattr(cal, "measure_once", fake_measure)
+    vcf = write_vcf(tmp_path / "in.vcf", 20000)
+    return cal.calibrate(
+        vcf,
+        ["tool", "{input}", "{output}"],
+        workdir=tmp_path / "work",
+        fractions=FAKE_FRACTIONS,
+        job_name="job",
+        logger=logger,
+    )
+
+
+def _snakemake_values(result: Any) -> tuple[int, int]:
+    """Evaluate the emitted Snakemake mem_mb and runtime functions at the full input size."""
+    from types import SimpleNamespace
+
+    from pipeprof.units import MIB
+
+    namespace: dict[str, Any] = {}
+    code = result.snippets["snakemake_rule"].split("rule job:")[0]
+    exec(code, namespace)  # noqa: S102 - our own generated code
+    size = SimpleNamespace(size_mb=result.full_input_bytes / MIB)
+    return namespace["job_mem_mb"](None, size, 1), namespace["job_runtime"](None, size, 1)
+
+
+def test_waiting_runtime_formula_matches_derived_wall(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # CPU grows with input; every run keeps 0.2 cores busy, so wall is five times CPU.
+    def usage(f: float) -> tuple[float, float, float]:
+        cpu = 600.0 * f
+        return cpu / 0.2, cpu, 50e6 + 1e9 * f
+
+    result = _fake_calibrate(tmp_path, monkeypatch, usage)
+    wall = result.predictions["wall_s"]
+    assert wall.basis == "mostly waiting"
+    _, runtime_min = _snakemake_values(result)
+    plan = result.plan
+    # The dynamic runtime at full size covers the derived wall bound with headroom,
+    # as the fixed sbatch time does, instead of covering CPU seconds only.
+    assert runtime_min >= plan.predicted_wall_upper_s * plan.time_headroom / 60
+    assert runtime_min <= plan.runtime_min + 1
+    assert "mostly waiting" in result.snippets["snakemake_rule"]
+
+
+@pytest.mark.parametrize("shape", ["flat", "hinge"])
+def test_emitted_memory_covers_widened_bound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, shape: str
+) -> None:
+    def usage(f: float) -> tuple[float, float, float]:
+        # Hinge: a gentle rise after 0.1, so the proportional bound exceeds the line.
+        rss = 70e6 if shape == "flat" or f <= 0.1 else 70e6 + 3e8 * (f - 0.1)
+        return 100.0 * f, 100.0 * f, rss
+
+    result = _fake_calibrate(tmp_path, monkeypatch, usage)
+    mem = result.predictions["peak_rss_bytes"]
+    assert mem.basis == ("flat" if shape == "flat" else "flat then rising")
+    mem_mb, _ = _snakemake_values(result)
+    plan = result.plan
+    assert mem_mb * 10**6 >= plan.predicted_peak_rss_upper_bytes * plan.mem_headroom
+
