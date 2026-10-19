@@ -27,7 +27,7 @@ from pipeprof.emit import (
     snakemake_profile,
     snakemake_rule,
 )
-from pipeprof.fit import Selection, select_model
+from pipeprof.fit import Selection, predict_with_plateau, select_model
 from pipeprof.logkit import RunLogger
 from pipeprof.measure import Measurement, run_measured
 from pipeprof.provenance import capture
@@ -84,6 +84,10 @@ class Prediction:
     upper: float
     level: float
     selection: Selection
+    #: "fitted"; for memory "flat" (no growth seen) or "flat then rising" (hinge fit).
+    basis: str = "fitted"
+    note: str = ""
+    observed_range: tuple[float, float] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -92,6 +96,9 @@ class Prediction:
             "lower": self.lower,
             "upper": self.upper,
             "level": self.level,
+            "basis": self.basis,
+            "note": self.note,
+            "observed_range": list(self.observed_range) if self.observed_range else None,
             "selection": self.selection.to_dict(),
         }
 
@@ -238,6 +245,41 @@ def cpus_from_runs(points: Sequence[RunPoint], threads: int) -> tuple[int, float
     return max(1, min(threads, math.ceil(busiest - 0.15))), busiest
 
 
+def predict_metrics(
+    points: Sequence[RunPoint], x_full: float, x_variable: str, level: float = 0.95
+) -> dict[str, Prediction]:
+    """Predict each metric at ``x_full`` from the measured runs."""
+    xs = [_x_of(p, x_variable) for p in points]
+    predictions: dict[str, Prediction] = {}
+    for metric in METRICS:
+        ys = [max(p.value(metric), 1e-9) for p in points]
+        note = ""
+        basis = "fitted"
+        if metric == "peak_rss_bytes":
+            # Memory often sits on a fixed buffer for the small runs and only then grows.
+            flat = predict_with_plateau(xs, ys, x_full, level)
+            selection, point, lower, upper = flat.selection, flat.point, flat.lower, flat.upper
+            if flat.plateau is not None:
+                basis = "flat" if flat.plateau.whole else "flat then rising"
+                note = flat.note
+        else:
+            selection = select_model(xs, ys)
+            point = selection.chosen.predict(x_full)
+            lower, upper = selection.chosen.interval(x_full, level)
+        largest = max(ys)
+        if x_full >= max(xs) and point < largest:
+            # The full input cannot need less than its largest subsample did.
+            selection.reason += (
+                f"; prediction {point:.4g} raised to the largest measured value {largest:.4g}"
+            )
+            point = largest
+            upper = max(upper, largest)
+        predictions[metric] = Prediction(
+            metric, point, lower, upper, level, selection, basis=basis, note=note
+        )
+    return predictions
+
+
 def calibrate(
     input_path: str | Path,
     template: Sequence[str],
@@ -331,28 +373,13 @@ def calibrate(
             remove_subsamples(subs)
 
     x_full = _x_of(full, x_variable)
-    xs = [_x_of(p, x_variable) for p in points]
-    predictions: dict[str, Prediction] = {}
     with log.step("fit", x_variable=x_variable, points=len(points)) as info:
-        for metric in METRICS:
-            ys = [max(p.value(metric), 1e-9) for p in points]
-            selection = select_model(xs, ys)
-            point = selection.chosen.predict(x_full)
-            lower, upper = selection.chosen.interval(x_full, level)
-            largest = max(ys)
-            if x_full >= max(xs) and point < largest:
-                # The full input cannot need less than its largest subsample did.
-                selection.reason += (
-                    f"; prediction {point:.4g} raised to the largest measured value {largest:.4g}"
-                )
-                point = largest
-                upper = max(upper, largest)
-            predictions[metric] = Prediction(metric, point, lower, upper, level, selection)
-            info[metric] = {
-                "model": str(selection.chosen.kind),
-                "point": predictions[metric].point,
-                "upper": upper,
-            }
+        predictions = predict_metrics(points, x_full, x_variable, level)
+        for metric, pred in predictions.items():
+            info[metric] = {"model": pred.basis, "point": pred.point, "upper": pred.upper}
+    for pred in predictions.values():
+        if pred.basis != "fitted":
+            log.warning(f"{pred.metric}: {pred.note}", metric=pred.metric, basis=pred.basis)
 
     cpus, busiest = cpus_from_runs(points, threads)
     if busiest > threads + 0.15:

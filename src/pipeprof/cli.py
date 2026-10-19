@@ -164,12 +164,15 @@ def calibrate_cmd(
         fmt = format_memory if metric == "peak_rss_bytes" else (lambda v: f"{v:.2f} s")
         table.add_row(
             metric,
-            str(pred.selection.chosen.kind),
+            str(pred.selection.chosen.kind) if pred.basis == "fitted" else pred.basis,
             fmt(pred.point),
             f"{fmt(pred.lower)} to {fmt(pred.upper)}",
         )
     out = Console()
     out.print(table)
+    for pred in result.predictions.values():
+        if pred.note:
+            out.print(f"{pred.metric}: {pred.note}")
     plan = result.plan
     out.print(
         f"Request: --cpus-per-task={plan.cpus} --mem={plan.slurm_mem} "

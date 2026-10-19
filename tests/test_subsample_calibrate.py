@@ -11,6 +11,7 @@ import pytest
 
 from pipeprof.calibrate import (
     CalibrationError,
+    RunPoint,
     calibrate,
     file_extension,
     render_command,
@@ -261,3 +262,24 @@ def test_decreasing_series_never_predicts_below_measured(tmp_path: Path) -> None
     assert falling.chosen.interval(100.0) == (5.0, 5.0)
     assert "largest measured" in falling.chosen.formula()
     assert "rejected decreasing" in falling.reason
+
+
+def _run(fraction: float, wall: float, cpu: float, rss: float, repeat: int = 1) -> RunPoint:
+    from pipeprof.measure import Measurement
+
+    peak = int(rss)
+    m = Measurement("x", 0, wall, cpu, 0.0, peak, peak, peak, None, None, 0, 0, 1, 0.05)
+    return RunPoint(fraction, repeat, "p", int(fraction * 1e9), 1, m)
+
+
+def test_flat_memory_is_marked_and_bounded() -> None:
+    from pipeprof.calibrate import predict_metrics
+
+    # Synthetic runs: CPU-busy, memory flat near 70 MB at every size.
+    runs = [_run(f, 10 * f, 10 * f, 70e6 * j) for f, j in [(0.01, 0.99), (0.05, 1.0), (0.1, 1.01)]]
+    preds = predict_metrics(runs, 1e9, "bytes")
+    mem = preds["peak_rss_bytes"]
+    assert mem.basis == "flat"
+    assert mem.upper == pytest.approx(70.7e6 * 10)
+    assert mem.to_dict()["basis"] == "flat"
+    assert preds["cpu_s"].basis == "fitted"

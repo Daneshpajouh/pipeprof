@@ -65,6 +65,37 @@ bisection on the t CDF, which uses the regularized incomplete beta function
 quantiles against printed table values (for example `t(0.975, 3) = 3.1824`)
 to four decimals.
 
+## Flat memory: no growth seen is not no growth
+
+On a cluster run of `bcftools sort`, peak RSS stayed flat up to the 10
+percent subsample. The straight fit predicted 69.9 MB (interval 39.6 to
+100.2 MB); the full input used 176.6 MB, 2.5 times more. Flat small runs
+only show that the tool sits on a fixed buffer up to that size, not that it
+stays there.
+
+The rule, in `fit.predict_with_plateau` for peak RSS:
+
+- Flat means a relative spread, `(max - min) / max`, of at most
+  `FLAT_SPREAD` = 10 percent over the leading sizes. Peak RSS of one input
+  repeats within a few percent, so 10 percent is clear of that noise; a
+  step whose memory really scales moves by more than that across the default
+  1 to 10 percent fractions.
+- Every size flat: nothing can be extrapolated. The point is the largest
+  measured value and the upper bound is that run scaled in proportion to
+  input, `y_largest * x_full / x_largest`: what the full input would need if
+  the whole of the largest run were per-unit cost. A step whose memory grows
+  faster than its input can exceed it. `calibrate` warns and marks the
+  prediction `flat` in the table and in `calibration.json`; larger
+  fractions (`--fractions 0.05,0.1,0.2,0.3,0.5`) show the growth.
+- Flat, then rising: a hinge. The model is fitted from the last flat size
+  on, since the flat part says nothing about the slope after the hinge. With
+  fewer than three sizes after it there is no residual variance, so the
+  interval runs from the largest measured value to the proportional bound.
+  The prediction is marked `flat then rising`.
+
+The bound is wide by design: with flat runs at 10 percent of the input it is
+ten times the largest run. That is the price of not having measured growth.
+
 ## From prediction to request
 
     memory request = round_up(upper_95(peak RSS) * 1.2)      steps: 256 MiB, 1 GiB, 4 GiB

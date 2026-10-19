@@ -334,3 +334,125 @@ def select_model(
         detail = ", ".join(f"{k}={v:.4f}" for k, v in scored.items())
         reason = f"lowest mean absolute log extrapolation error ({detail})"
     return Selection(fits[chosen_kind], fits, scores, errors, reason + note)
+
+
+# Plateaus: flat small runs, then growth.
+
+#: Relative spread, (max - min) / max, under which a run of points counts as flat.
+#: Peak RSS of one input repeats within a few percent, so 10 percent is clear of
+#: that noise, while a step whose memory really scales moves by more than this
+#: across the default 1 to 10 percent fractions.
+FLAT_SPREAD = 0.10
+
+
+@dataclass(frozen=True)
+class Plateau:
+    """The leading points, in order of ``x``, whose values stay within ``FLAT_SPREAD``."""
+
+    end_x: float
+    count: int
+    spread: float
+    whole: bool
+
+
+def relative_spread(ys: Sequence[float]) -> float:
+    top = max(ys)
+    return (top - min(ys)) / top if top > 0 else 0.0
+
+
+def find_plateau(
+    xs: Sequence[float], ys: Sequence[float], spread: float = FLAT_SPREAD
+) -> Plateau | None:
+    """The longest flat prefix of the series, or ``None`` if it spans under two sizes.
+
+    A fit through a flat prefix says the value does not grow, which is only
+    known to be true up to the end of the prefix.
+    """
+    pairs = sorted(zip(xs, ys, strict=True))
+    count = 0
+    for index in range(1, len(pairs) + 1):
+        if relative_spread([y for _, y in pairs[:index]]) > spread:
+            break
+        count = index
+    flat = pairs[:count]
+    if len({x for x, _ in flat}) < 2:
+        return None
+    return Plateau(flat[-1][0], count, relative_spread([y for _, y in flat]), count == len(pairs))
+
+
+def proportional_bound(xs: Sequence[float], ys: Sequence[float], x_new: float) -> float:
+    """The largest run's value scaled by ``x_new / x``: growth at most in proportion to input.
+
+    This is the bound when the runs show no growth to extrapolate: if the
+    whole value of the largest run were per-unit cost, the full input would
+    need this much. A step whose memory grows faster than its input (an
+    all-pairs table) can exceed it; none of the steps calibrated so far does.
+    """
+    x_top = max(xs)
+    y_top = max(y for x, y in zip(xs, ys, strict=True) if x == x_top)
+    return y_top * x_new / x_top
+
+
+@dataclass
+class PlateauPrediction:
+    """A prediction that takes a flat start into account."""
+
+    selection: Selection
+    point: float
+    lower: float
+    upper: float
+    plateau: Plateau | None
+    note: str = ""
+
+
+def predict_with_plateau(
+    xs: Sequence[float], ys: Sequence[float], x_new: float, level: float = 0.95
+) -> PlateauPrediction:
+    """Predict ``y`` at ``x_new``, refusing to read a flat start as no growth.
+
+    * No plateau: the usual :func:`select_model` prediction.
+    * Every point flat: no growth was seen, so nothing can be extrapolated.
+      The point is the largest measured value, and the upper bound is
+      :func:`proportional_bound`.
+    * Flat, then rising (a hinge): the model is fitted only from the last flat
+      point on, since the flat part says nothing about the slope after the
+      hinge. With fewer than three sizes there is no residual variance,
+      so the upper bound is widened to :func:`proportional_bound`.
+
+    In both plateau cases with thin evidence the lower bound is the largest
+    measured value, which the full input cannot need less than.
+    """
+    plateau = find_plateau(xs, ys)
+    largest = max(ys)
+    if plateau is None:
+        selection = select_model(xs, ys)
+        lower, upper = selection.chosen.interval(x_new, level)
+        return PlateauPrediction(selection, selection.chosen.predict(x_new), lower, upper, None)
+    bound = proportional_bound(xs, ys, x_new)
+    if plateau.whole:
+        selection = select_model(xs, ys)
+        _, upper = selection.chosen.interval(x_new, level)
+        note = (
+            f"flat: values within {plateau.spread:.1%} (under {FLAT_SPREAD:.0%}) over every "
+            f"size, so no growth was seen to extrapolate; upper bound is the largest run "
+            f"scaled in proportion to input ({bound:.4g}); use larger fractions to see growth"
+        )
+        selection.reason += "; " + note
+        point = max(selection.chosen.predict(x_new), largest)
+        return PlateauPrediction(selection, point, largest, max(upper, bound), plateau, note)
+    tail = [(x, y) for x, y in zip(xs, ys, strict=True) if x >= plateau.end_x]
+    selection = select_model([x for x, _ in tail], [y for _, y in tail])
+    point = selection.chosen.predict(x_new)
+    lower, upper = selection.chosen.interval(x_new, level)
+    note = (
+        f"flat then rising: values within {plateau.spread:.1%} up to x={plateau.end_x:.6g}, "
+        f"so the model is fitted from there on"
+    )
+    if len({x for x, _ in tail}) < 3:
+        lower, upper = largest, max(upper, bound)
+        note += (
+            f"; under three sizes after the flat part, so the interval is the largest "
+            f"measured value to the proportional bound ({bound:.4g})"
+        )
+    selection.reason += "; " + note
+    return PlateauPrediction(selection, point, lower, upper, plateau, note)
