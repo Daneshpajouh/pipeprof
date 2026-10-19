@@ -7,7 +7,8 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - First release under the name pipeprof (was hpc-job-profiler): package,
   import and command are `pipeprof`.
 - `pipeprof analyze`: whole-run bottleneck analysis over a Nextflow trace,
-  Snakemake benchmarks plus run log, or a plain TSV. Critical path (declared
+  Snakemake benchmarks plus run log (a benchmark's repeats are one job, so
+  one task), or a plain TSV. Critical path (declared
   or inferred dependencies), each step's share of wall time, parallel
   efficiency over time, idle gaps, queue wait and retries.
 - Per-step boundness labels (cpu-bound, io-bound, memory-bound, mostly
@@ -21,7 +22,9 @@ Versions follow [Semantic Versioning](https://semver.org/).
   `StepUsage` per task for CPU, memory and I/O metrics.
 - Readers for standard tools' output, each returning a `StepUsage`: GNU
   `/usr/bin/time -v`, macOS `/usr/bin/time -l`, psrecord logs and Slurm
-  `seff`; py-spy speedscope JSON with top functions by self and total time.
+  `seff` (with or without the per-node or per-core request after the memory
+  total; a memory line it cannot read is noted, not dropped); py-spy
+  speedscope JSON with top functions by self and total time.
 - `pipeprof usage TOOL FILE --step NAME`: one `StepUsage` JSON line for
   `pipeprof analyze --usage`, which now applies to every source and fills only
   the metrics the runner left empty (Nextflow on macOS records none).
@@ -36,7 +39,9 @@ Versions follow [Semantic Versioning](https://semver.org/).
   model is fitted from the hinge on. Found on a cluster, where a flat series
   predicted 69.9 MB (interval 39.6 to 100.2 MB) for a run that used 176.6 MB.
   The comment in the emitted sbatch, Snakemake and Nextflow snippets states
-  which of the two applied and why. Rule and threshold in docs/algorithm.md.
+  which of the two applied and why, and after a hinge the emitted memory
+  formulas never ask for less than the flat level at any input size. Rule and
+  threshold in docs/algorithm.md.
 - `pipeprof calibrate`: when any run kept under 30 percent of one core busy
   (wall above 3.3 times CPU; the "mostly waiting" threshold of
   `pipeprof analyze`), wall time is not fitted. The output says so, gives the
@@ -62,6 +67,12 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - `pipeprof calibrate`: the Snakemake and Nextflow memory and time formulas
   take their safety factor from the plan's upper bound, so a flat or hinged
   memory series asks for at least the fixed request at full size.
+- `pipeprof calibrate`: with fewer than three runs, or when every fit falls
+  and the largest measured value is used, there is no interval. The table,
+  the JSON and every emitted request now say "no interval" and why, instead
+  of a zero width interval that read as certainty, and the request is sized
+  from the larger of the point prediction and the largest run scaled in
+  proportion to input.
 - `pipeprof calibrate`: runs under 1 percent of one core busy (pure waits,
   with at most start-up CPU) are left out of the cores-busy ratio and of the
   CPU fit, so they no longer inflate the wall estimate a million times or

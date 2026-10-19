@@ -43,7 +43,10 @@ With the default five fractions, three points are scored per model.
 A fit with a negative slope or exponent is rejected before scoring: time,
 CPU and memory do not fall as the input grows, and a falling fit comes from
 start-up cost in the smallest runs. If both fits fall, the largest measured
-value is used and the reason in `calibration.json` says so. Separately, the
+value is used and the reason in `calibration.json` says so. That value is a
+rule's pick, not a fit, so it has no interval either: pipeprof reports "no
+interval (no fitted curve grows with input size)" and sizes the request as
+below for fewer than three runs. Separately, the
 prediction for the full input is never below the largest measured value. One
 unmeasured warm-up run on the smallest subsample comes first (`--no-warmup`
 turns it off).
@@ -103,7 +106,10 @@ The rule, in `fit.predict_with_plateau` for peak RSS:
   on, since the flat part says nothing about the slope after the hinge. With
   fewer than three sizes after it there is no residual variance, so the
   interval runs from the largest measured value to the proportional bound.
-  The prediction is marked `flat then rising`.
+  The prediction is marked `flat then rising`. The emitted Snakemake and
+  Nextflow memory formulas never ask for less than the flat level times the
+  headroom at any input size: the curve fitted after the hinge falls under
+  that level for inputs smaller than the hinge.
 
 The bound is wide by design: with flat runs at 10 percent of the input it is
 ten times the largest run. That is the price of not having measured growth.
@@ -204,7 +210,10 @@ block that ends it with a failure. The job ID itself is a few lines further
 into the block, so `timeline._snakemake_log_times` tracks which event a
 pending timestamp belongs to until the ID line turns up. Snakemake
 schedules its own jobs rather than queueing through a separate scheduler, so
-there is no `submit` time for it.
+there is no `submit` time for it. A benchmark file with several rows
+(`benchmark: repeat(...)`) is one job that ran the command that many times
+in a row: it is one task on the timeline, with elapsed and CPU time added up
+over the rows and the largest peak RSS.
 
 ### Critical path
 
