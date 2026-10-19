@@ -35,7 +35,8 @@ Versions follow [Semantic Versioning](https://semver.org/).
   run scaled in proportion to input, with a warning. Flat then rising: the
   model is fitted from the hinge on. Found on a cluster, where a flat series
   predicted 69.9 MB (interval 39.6 to 100.2 MB) for a run that used 176.6 MB.
-  Rule and threshold in docs/algorithm.md.
+  The comment in the emitted sbatch, Snakemake and Nextflow snippets states
+  which of the two applied and why. Rule and threshold in docs/algorithm.md.
 - `pipeprof calibrate`: when any run kept under 30 percent of one core busy
   (wall above 3.3 times CPU; the "mostly waiting" threshold of
   `pipeprof analyze`), wall time is not fitted. The output says so, gives the
