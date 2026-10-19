@@ -5,8 +5,7 @@
 # benchmark file, which `hjp report --snakemake-benchmarks` reads afterwards.
 #
 # Run from this folder:
-#   snakemake --cores 4 --config clinvar_vcf=/path/to/clinvar.vcf.gz
-import math
+#   snakemake --cores 4 --scheduler greedy --config clinvar_vcf=/path/to/clinvar.vcf.gz
 
 configfile: "config.yaml"
 
