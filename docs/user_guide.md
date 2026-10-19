@@ -165,7 +165,9 @@ pipeprof usage seff seff_1234.txt --step "1234" >> usage.jsonl
 ```
 
 py-spy speedscope profiles are function-level, not per step: read them with
-`pipeprof.tools.speedscope.parse_speedscope(text).top_functions(10)`.
+`pipeprof.tools.speedscope.parse_speedscope(text).top_functions(10)`. py-spy
+writes one profile per thread; every profile is read and ranked together,
+or one with `parse_speedscope(text, profile_index=1)`.
 
 A worked before-and-after run is in
 [case_study_nextflow_vcf_chain.md](case_study_nextflow_vcf_chain.md).

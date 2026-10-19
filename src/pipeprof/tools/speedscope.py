@@ -16,7 +16,7 @@ fixtures in ``tests/data/tools`` are hand-written from the schema.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -49,6 +49,8 @@ class SpeedscopeProfile:
     unit: str
     stacks: list[tuple[int, ...]]
     weights: list[float]
+    #: Names of the profiles read (py-spy writes one profile per thread).
+    profile_names: list[str] = field(default_factory=list)
 
     def top_functions(self, n: int) -> list[FunctionCost]:
         """The ``n`` functions with the most total samples, busiest first.
@@ -142,12 +144,27 @@ def _stacks_from_evented(profile: dict[str, Any]) -> tuple[list[tuple[int, ...]]
     return stacks, weights
 
 
-def parse_speedscope(text: str) -> SpeedscopeProfile:
-    """Parse the active profile of a speedscope JSON document.
+def _read_profile(profile: dict[str, Any]) -> tuple[list[tuple[int, ...]], list[float]]:
+    profile_type = profile.get("type")
+    if profile_type == "sampled":
+        return _stacks_from_sampled(profile)
+    if profile_type == "evented":
+        return _stacks_from_evented(profile)
+    raise ValueError(f"unsupported speedscope profile type: {profile_type!r}")
+
+
+def parse_speedscope(text: str, profile_index: int | None = None) -> SpeedscopeProfile:
+    """Parse a speedscope JSON document: every profile, or one on request.
+
+    py-spy writes one profile per thread, and ``activeProfileIndex`` only
+    says which one the viewer opens first, so by default every profile is
+    read and :meth:`SpeedscopeProfile.top_functions` ranks over all threads.
+    ``profile_index`` reads that one profile only. All profiles read together
+    must share one unit, since their weights are added.
 
     Raises ``ValueError`` if ``text`` is not JSON, is not a speedscope
-    document, has no profiles, or uses a profile type other than "sampled"
-    or "evented".
+    document, has no profiles, mixes units, or uses a profile type other
+    than "sampled" or "evented".
     """
     try:
         doc = json.loads(text)
@@ -160,21 +177,29 @@ def parse_speedscope(text: str) -> SpeedscopeProfile:
     profiles = doc.get("profiles") or []
     if not profiles:
         raise ValueError("speedscope document has no profiles")
-    active_index = doc.get("activeProfileIndex") or 0
-    try:
-        profile = profiles[active_index]
-    except IndexError as exc:
-        raise ValueError(f"activeProfileIndex {active_index} is out of range") from exc
+    if profile_index is not None:
+        if not 0 <= profile_index < len(profiles):
+            raise ValueError(
+                f"profile index {profile_index} is out of range ({len(profiles)} profiles)"
+            )
+        profiles = [profiles[profile_index]]
 
-    profile_type = profile.get("type")
-    unit = profile.get("unit", "")
-    if profile_type == "sampled":
-        stacks, weights = _stacks_from_sampled(profile)
-    elif profile_type == "evented":
-        stacks, weights = _stacks_from_evented(profile)
-    else:
-        raise ValueError(f"unsupported speedscope profile type: {profile_type!r}")
+    units = {p.get("unit", "") for p in profiles}
+    if len(units) > 1:
+        raise ValueError(f"profiles use different units {sorted(units)}; pass profile_index")
+    types = {p.get("type") for p in profiles}
+    stacks: list[tuple[int, ...]] = []
+    weights: list[float] = []
+    for profile in profiles:
+        more_stacks, more_weights = _read_profile(profile)
+        stacks += more_stacks
+        weights += more_weights
 
     return SpeedscopeProfile(
-        frames=frames, profile_type=profile_type, unit=unit, stacks=stacks, weights=weights
+        frames=frames,
+        profile_type=str(types.pop()) if len(types) == 1 else "mixed",
+        unit=units.pop(),
+        stacks=stacks,
+        weights=weights,
+        profile_names=[str(p.get("name", "")) for p in profiles],
     )
