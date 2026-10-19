@@ -1,0 +1,15 @@
+.venv
+.git
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.coverage
+dist
+site
+data
+examples/*/results
+examples/*/benchmarks
+examples/*/logs
+examples/*/.snakemake
+examples/*/hjp_report
+**/__pycache__
