@@ -25,7 +25,9 @@ def test_measures_memory_of_one_process() -> None:
 
 
 def test_tree_peak_counts_concurrent_children() -> None:
-    script = f'"{PY}" -c "{ALLOC}" & "{PY}" -c "{ALLOC}" & wait'
+    # Children hold memory for 2 s so a slow sampler on a loaded machine still sees both.
+    hold = ALLOC.replace("time.sleep(0.4)", "time.sleep(2)")
+    script = f'"{PY}" -c "{hold}" & "{PY}" -c "{hold}" & wait'
     seen: list[int] = []
     m = run_measured(
         script, shell=True, interval=0.02, on_sample=lambda s: seen.append(s.num_procs)

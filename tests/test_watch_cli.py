@@ -240,7 +240,7 @@ def test_run_id_links_calibrate_watch_and_report(
             "--",
             PY,
             "-c",
-            "import time; time.sleep(0.4)",
+            "import time; time.sleep(1.5)",
         ],
     )
     assert w.exit_code == 0

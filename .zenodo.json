@@ -1,0 +1,8 @@
+{
+  "title": "hpc-job-profiler",
+  "description": "Profile bioinformatics jobs before, during and after Slurm submission, with structured logging.",
+  "upload_type": "software",
+  "license": "Apache-2.0",
+  "creators": [{"name": "Daneshpajouh, Amir"}],
+  "keywords": ["slurm", "hpc", "bioinformatics", "profiling", "nextflow", "snakemake"]
+}

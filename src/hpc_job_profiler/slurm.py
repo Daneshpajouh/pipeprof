@@ -89,7 +89,6 @@ def binary(name: str) -> str:
 
 
 def run_text(cmd: Sequence[str], timeout: float = 60.0) -> str:
-    """Run a Slurm client command and return stdout."""
     try:
         result = subprocess.run(
             list(cmd), capture_output=True, text=True, timeout=timeout, check=False
@@ -172,7 +171,6 @@ def parse_sstat(text: str) -> list[StepUsage]:
 
 
 def query_sstat(job_id: str, timeout: float = 30.0) -> list[StepUsage]:
-    """Return live usage of every running step of a job."""
     cmd = [
         binary("sstat"),
         "--parsable2",

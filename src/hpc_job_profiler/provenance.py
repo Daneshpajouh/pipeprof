@@ -70,12 +70,10 @@ class Provenance:
     packages: dict[str, str | None] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a JSON ready dictionary."""
         return asdict(self)
 
 
 def sha256_file(path: str | Path, chunk_size: int = 1 << 20) -> str:
-    """Return the hex SHA-256 of a file, read in chunks."""
     digest = hashlib.sha256()
     with Path(path).open("rb") as handle:
         while chunk := handle.read(chunk_size):
@@ -146,7 +144,6 @@ def git_state(path: str | Path = ".") -> dict[str, str | bool | None]:
 
 
 def hash_inputs(paths: Iterable[str | Path]) -> list[InputHash]:
-    """Hash each existing input file."""
     hashes: list[InputHash] = []
     for raw in paths:
         path = Path(raw)
@@ -158,7 +155,6 @@ def hash_inputs(paths: Iterable[str | Path]) -> list[InputHash]:
 
 
 def package_versions(names: Iterable[str] = ("psutil", "typer", "rich")) -> dict[str, str | None]:
-    """Return installed versions of Python packages."""
     versions: dict[str, str | None] = {}
     for name in names:
         try:
@@ -173,7 +169,6 @@ def capture(
     tools: Iterable[str] = DEFAULT_TOOLS,
     git_path: str | Path = ".",
 ) -> Provenance:
-    """Capture provenance for the current process."""
     uname = platform.uname()
     return Provenance(
         captured_at=utc_now_iso(),

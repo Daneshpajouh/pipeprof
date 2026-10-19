@@ -63,7 +63,6 @@ class ResourcePlan:
         return f"{math.ceil(self.mem_bytes / MIB)}M"
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form with derived fields."""
         data = asdict(self)
         data.update(mem_mb=self.mem_mb, runtime_min=self.runtime_min, slurm_mem=self.slurm_mem)
         return data
@@ -104,7 +103,6 @@ def sbatch_header(
     account: str | None = None,
     note: str = "",
 ) -> str:
-    """Return a ready ``#SBATCH`` header."""
     lines = [
         "#!/usr/bin/env bash",
         f"#SBATCH --job-name={job_name}",
@@ -140,13 +138,11 @@ class ScaledFormula:
     safety: float
 
     def python(self, var: str) -> str:
-        """Expression in Python syntax."""
         if self.kind is ModelKind.POWER:
             return f"{self.coef:.6g} * {var} ** {self.exponent:.4f}"
         return f"{self.intercept:.6g} + {self.coef:.6g} * {var}"
 
     def groovy(self, var: str) -> str:
-        """Expression in Groovy syntax."""
         if self.kind is ModelKind.POWER:
             return f"{self.coef:.6g} * Math.pow({var}, {self.exponent:.4f})"
         return f"{self.intercept:.6g} + {self.coef:.6g} * {var}"

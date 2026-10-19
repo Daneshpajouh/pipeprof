@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "hpc-job-profiler"
+abstract: "Profile bioinformatics jobs before, during and after Slurm submission, with structured logging."
+type: software
+authors:
+  - family-names: "Daneshpajouh"
+    given-names: "Amir"
+version: "1.0.0"
+date-released: "2026-10-19"
+license: Apache-2.0
+repository-code: "https://github.com/Daneshpajouh/hpc-job-profiler"
+keywords: [slurm, hpc, bioinformatics, profiling, nextflow, snakemake]

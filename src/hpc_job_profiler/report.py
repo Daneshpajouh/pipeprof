@@ -71,7 +71,6 @@ class TaskMetrics:
     flags: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form."""
         return {
             "record": self.record.to_dict(),
             "cpu_efficiency": self.cpu_efficiency,
@@ -136,7 +135,6 @@ class Report:
     run_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form."""
         return {
             "run_id": self.run_id,
             "sources": self.sources,
@@ -155,7 +153,6 @@ def _ratio(num: float | None, den: float | None) -> float | None:
 
 
 def task_metrics(record: TaskRecord, thresholds: Thresholds) -> TaskMetrics:
-    """Compute efficiencies and flags for one record."""
     cpu_eff = None
     if record.cpu_time_s is not None and record.elapsed_s and record.alloc_cpus:
         cpu_eff = record.cpu_time_s / (record.elapsed_s * record.alloc_cpus)
@@ -260,7 +257,6 @@ def recommend(name: str, group: Sequence[TaskMetrics], thresholds: Thresholds) -
 
 
 def summarise_arrays(metrics: Sequence[TaskMetrics]) -> list[ArraySummary]:
-    """Group array tasks by array job ID."""
     groups: dict[str, list[TaskMetrics]] = {}
     for m in metrics:
         if m.record.array_job_id:
@@ -298,7 +294,6 @@ def build_report(
     sources: Sequence[str] = (),
     run_id: str = "",
 ) -> Report:
-    """Analyse records and build the report."""
     limits = thresholds or Thresholds()
     metrics = [task_metrics(r, limits) for r in records if r.state not in {"RUNNING", "PENDING"}]
     groups: dict[str, list[TaskMetrics]] = {}
@@ -410,7 +405,6 @@ def _failure_lines(report: Report) -> list[str]:
 
 
 def to_markdown(report: Report) -> str:
-    """Render the report as Markdown."""
     t = report.totals
     rec_head, rec_rows, task_head, task_rows = _rows(report)
     out = [
@@ -492,5 +486,4 @@ def to_html(report: Report) -> str:
 
 
 def to_json(report: Report) -> str:
-    """Render the report as JSON."""
     return json.dumps(report.to_dict(), indent=2)

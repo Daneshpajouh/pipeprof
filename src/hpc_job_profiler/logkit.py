@@ -68,16 +68,17 @@ def _json_default(value: object) -> object:
 class JsonLinesFormatter(logging.Formatter):
     """Format a log record as one JSON object per line."""
 
-    def __init__(self, run_id: str) -> None:
+    def __init__(self, run_id: str, name: str | None = None) -> None:
         super().__init__()
         self.run_id = run_id
+        self.name = name
 
     def format(self, record: logging.LogRecord) -> str:
         created = dt.datetime.fromtimestamp(record.created, dt.UTC)
         payload: dict[str, Any] = {
             "ts": created.strftime("%Y-%m-%dT%H:%M:%S.") + f"{created.microsecond // 1000:03d}Z",
             "level": record.levelname,
-            "logger": record.name,
+            "logger": self.name or record.name,
             "run_id": self.run_id,
             "event": getattr(record, _EVENT_ATTR, "message"),
             "msg": record.getMessage(),
@@ -141,7 +142,7 @@ class RunLogger:
         if self.jsonl_path is not None:
             self.jsonl_path.parent.mkdir(parents=True, exist_ok=True)
             file_handler = logging.FileHandler(self.jsonl_path, encoding="utf-8")
-            file_handler.setFormatter(JsonLinesFormatter(self.run_id))
+            file_handler.setFormatter(JsonLinesFormatter(self.run_id, name))
             self._add_handler(file_handler)
         if console is not None:
             stream_handler = logging.StreamHandler(console)
@@ -155,7 +156,9 @@ class RunLogger:
     def add_stream(self, stream: IO[str], json_lines: bool = True) -> None:
         """Send records to another stream, as JSON lines or console text."""
         handler = logging.StreamHandler(stream)
-        handler.setFormatter(JsonLinesFormatter(self.run_id) if json_lines else ConsoleFormatter())
+        handler.setFormatter(
+            JsonLinesFormatter(self.run_id, self.name) if json_lines else ConsoleFormatter()
+        )
         self._add_handler(handler)
 
     def _emit(
@@ -174,19 +177,15 @@ class RunLogger:
         )
 
     def event(self, event: str, msg: str = "", level: int = logging.INFO, **fields: Any) -> None:
-        """Record a named event with structured fields."""
         self._emit(level, msg or event, event, fields)
 
     def info(self, msg: str, **fields: Any) -> None:
-        """Record an informational message."""
         self.event("message", msg, logging.INFO, **fields)
 
     def warning(self, msg: str, **fields: Any) -> None:
-        """Record a warning."""
         self.event("warning", msg, logging.WARNING, **fields)
 
     def error(self, msg: str, **fields: Any) -> None:
-        """Record an error."""
         self.event("error", msg, logging.ERROR, **fields)
 
     @contextmanager
@@ -226,7 +225,6 @@ class RunLogger:
         self._emit(logging.INFO, f"done {name}", "step_end", payload)
 
     def close(self) -> None:
-        """Flush and detach all handlers."""
         for handler in self._handlers:
             handler.flush()
             handler.close()

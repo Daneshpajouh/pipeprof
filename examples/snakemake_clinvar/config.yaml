@@ -1,0 +1,4 @@
+# Set the VCF path on the command line: --config clinvar_vcf=/path/to/clinvar.vcf.gz
+# (scripts/fetch_data.sh puts it in data/clinvar/).
+clinvar_vcf: ../../data/clinvar/clinvar.vcf.gz
+chromosomes: ["1", "2", "17", "21", "22", "X"]

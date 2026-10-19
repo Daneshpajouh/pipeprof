@@ -46,7 +46,6 @@ class TreeSample:
     write_bytes: int | None
 
     def to_dict(self) -> dict[str, Any]:
-        """Return a JSON ready dictionary."""
         return asdict(self)
 
 
@@ -66,7 +65,6 @@ class TreeSampler:
         self._write: dict[tuple[int, float], int] = {}
 
     def processes(self) -> list[psutil.Process]:
-        """Return the root process and its live descendants."""
         try:
             return [self.root, *self.root.children(recursive=True)]
         except (psutil.NoSuchProcess, psutil.ZombieProcess):
@@ -141,7 +139,6 @@ class Measurement:
         return self.cpu_s / self.wall_s if self.wall_s > 0 else 0.0
 
     def to_dict(self, with_timeline: bool = False) -> dict[str, Any]:
-        """Return a JSON ready dictionary."""
         data = asdict(self)
         data["cpu_s"] = self.cpu_s
         if not with_timeline:

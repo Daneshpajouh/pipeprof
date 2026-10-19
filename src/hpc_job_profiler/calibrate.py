@@ -59,13 +59,11 @@ class RunPoint:
     measurement: Measurement
 
     def value(self, metric: str) -> float:
-        """The named metric of this run."""
         if metric == "cpu_s":
             return self.measurement.cpu_s
         return float(getattr(self.measurement, metric))
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form."""
         return {
             "fraction": self.fraction,
             "repeat": self.repeat,
@@ -88,7 +86,6 @@ class Prediction:
     selection: Selection
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form."""
         return {
             "metric": self.metric,
             "point": self.point,
@@ -120,7 +117,6 @@ class CalibrationResult:
     run_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form."""
         return {
             "run_id": self.run_id,
             "command_template": self.command_template,

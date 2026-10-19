@@ -1,0 +1,627 @@
+{
+  "sources": [
+    "benchmarks",
+    ".snakemake/log/2026-10-19T113043.412429.snakemake.log"
+  ],
+  "thresholds": {
+    "cpu_efficiency": 0.5,
+    "mem_efficiency": 0.5,
+    "time_use": 0.25,
+    "mem_headroom": 1.2,
+    "time_headroom": 1.5
+  },
+  "totals": {
+    "core_hours_allocated": 0.0,
+    "core_hours_used": 0.0,
+    "gib_hours_requested": 0.0,
+    "gib_hours_used": 0.0,
+    "queue_wait_hours": 0.0,
+    "tasks": 18,
+    "failed": 1
+  },
+  "recommendations": [
+    {
+      "name": "extract_chrom",
+      "tasks": 6,
+      "cpus": null,
+      "mem_bytes": null,
+      "time_s": 300,
+      "basis": [
+        "memory: no peak RSS recorded for completed tasks; no recommendation",
+        "time: max elapsed 00:00:03 over 6 completed tasks x 1.5"
+      ],
+      "current_cpus": 1,
+      "current_mem_bytes": 500000000,
+      "current_time_s": 600.0
+    },
+    {
+      "name": "sort_vcf",
+      "tasks": 6,
+      "cpus": null,
+      "mem_bytes": null,
+      "time_s": 300,
+      "basis": [
+        "memory: no peak RSS recorded for completed tasks; no recommendation",
+        "time: max elapsed 00:00:03 over 6 completed tasks x 1.5"
+      ],
+      "current_cpus": 1,
+      "current_mem_bytes": 1000000000,
+      "current_time_s": 600.0
+    },
+    {
+      "name": "stats",
+      "tasks": 6,
+      "cpus": null,
+      "mem_bytes": null,
+      "time_s": 300,
+      "basis": [
+        "memory: no peak RSS recorded for completed tasks; no recommendation",
+        "time: max elapsed 00:00:01 over 5 completed tasks x 1.5"
+      ],
+      "current_cpus": 2,
+      "current_mem_bytes": 1000000000,
+      "current_time_s": 600.0
+    }
+  ],
+  "arrays": [],
+  "tasks": [
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "3",
+        "name": "extract_chrom",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 2.21,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 500000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.003683333333333333,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "9",
+        "name": "extract_chrom",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 1.6,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 500000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.002666666666666667,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "6",
+        "name": "extract_chrom",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 2.41,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 500000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.004016666666666667,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "12",
+        "name": "extract_chrom",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 0.32,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 500000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0005333333333333334,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "15",
+        "name": "extract_chrom",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 0.66,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 500000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0011,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "18",
+        "name": "extract_chrom",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 1.13,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 500000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0018833333333333332,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "2",
+        "name": "sort_vcf",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 2.14,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0035666666666666668,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "8",
+        "name": "sort_vcf",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 1.71,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.00285,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "5",
+        "name": "sort_vcf",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 2.21,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.003683333333333333,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "11",
+        "name": "sort_vcf",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 0.5,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0008333333333333334,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "14",
+        "name": "sort_vcf",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 0.55,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0009166666666666668,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "17",
+        "name": "sort_vcf",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 1.09,
+        "cpu_time_s": null,
+        "alloc_cpus": 1,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0018166666666666667,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "1",
+        "name": "stats",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 0.51,
+        "cpu_time_s": null,
+        "alloc_cpus": 2,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0008500000000000001,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "7",
+        "name": "stats",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 0.25,
+        "cpu_time_s": null,
+        "alloc_cpus": 2,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0004166666666666667,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "4",
+        "name": "stats",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 0.41,
+        "cpu_time_s": null,
+        "alloc_cpus": 2,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0006833333333333333,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "10",
+        "name": "stats",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 0.16,
+        "cpu_time_s": null,
+        "alloc_cpus": 2,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0002666666666666667,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "13",
+        "name": "stats",
+        "state": "COMPLETED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": 0.16,
+        "cpu_time_s": null,
+        "alloc_cpus": 2,
+        "req_mem_bytes": 1000000000,
+        "max_rss_bytes": null,
+        "time_limit_s": 600.0,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "benchmark has no memory sample (NA)"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": 0.0002666666666666667,
+      "flags": [
+        "time limit far above use (0% used)"
+      ]
+    },
+    {
+      "record": {
+        "source": "snakemake",
+        "job_id": "16",
+        "name": "stats",
+        "state": "FAILED",
+        "exit_code": null,
+        "signal": null,
+        "elapsed_s": null,
+        "cpu_time_s": null,
+        "alloc_cpus": null,
+        "req_mem_bytes": null,
+        "max_rss_bytes": null,
+        "time_limit_s": null,
+        "queue_wait_s": null,
+        "array_job_id": null,
+        "array_task_id": null,
+        "attempt": null,
+        "node": null,
+        "inferred_state": false,
+        "notes": [
+          "failed in the run log; no benchmark row"
+        ]
+      },
+      "cpu_efficiency": null,
+      "mem_efficiency": null,
+      "time_use": null,
+      "flags": [
+        "FAILED"
+      ]
+    }
+  ]
+}

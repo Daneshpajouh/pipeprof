@@ -141,14 +141,12 @@ class Fit:
 
     @property
     def dof(self) -> int:
-        """Residual degrees of freedom."""
         return self.n - 2
 
     def _tx(self, x: float) -> float:
         return math.log(x) if self.kind is ModelKind.POWER else x
 
     def predict(self, x: float) -> float:
-        """Point prediction at input size ``x``."""
         value = self.intercept + self.slope * self._tx(x)
         return math.exp(value) if self.kind is ModelKind.POWER else value
 
@@ -163,8 +161,8 @@ class Fit:
             half = 0.0
         else:
             t = student_t_ppf(0.5 + level / 2.0, self.dof)
-            leverage = 1.0 + 1.0 / self.n + (self._tx(x) - self.x_mean) ** 2 / self.sxx
-            half = t * self.residual_sd * math.sqrt(leverage)
+            var_factor = 1.0 + 1.0 / self.n + (self._tx(x) - self.x_mean) ** 2 / self.sxx
+            half = t * self.residual_sd * math.sqrt(var_factor)
         if self.kind is ModelKind.POWER:
             return math.exp(centre - half), math.exp(centre + half)
         return max(0.0, centre - half), max(0.0, centre + half)
@@ -177,7 +175,6 @@ class Fit:
         return f"{self.intercept:.6g} {sign} {abs(self.slope):.6g} * {var}"
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form including the formula."""
         return {
             "kind": str(self.kind),
             "intercept": self.intercept,
@@ -210,7 +207,6 @@ def _ols(xs: Sequence[float], ys: Sequence[float], kind: ModelKind) -> Fit:
 
 
 def fit_linear(xs: Sequence[float], ys: Sequence[float]) -> Fit:
-    """Fit ``y = a + b * x``."""
     return _ols(xs, ys, ModelKind.LINEAR)
 
 
@@ -266,7 +262,6 @@ class Selection:
     reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form."""
         return {
             "chosen": str(self.chosen.kind),
             "reason": self.reason,

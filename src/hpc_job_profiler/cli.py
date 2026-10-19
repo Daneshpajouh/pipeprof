@@ -275,5 +275,4 @@ def provenance_cmd(
 
 
 def main() -> None:
-    """Entry point for the ``hjp`` console script."""
     app()

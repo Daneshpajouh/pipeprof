@@ -1,0 +1,73 @@
+# Small real workflow used to demonstrate hjp on Snakemake output.
+#
+# For each chromosome it extracts the ClinVar records with an indexed region
+# fetch, sorts them, and computes bcftools stats. Every rule writes a
+# benchmark file, which `hjp report --snakemake-benchmarks` reads afterwards.
+#
+# Run from this folder:
+#   snakemake --cores 4 --config clinvar_vcf=/path/to/clinvar.vcf.gz
+import math
+
+configfile: "config.yaml"
+
+CHROMS = config["chromosomes"]
+VCF = config["clinvar_vcf"]
+
+
+include: "hjp_resources.smk"
+
+
+rule all:
+    input:
+        expand("results/stats/chr{chrom}.stats.txt", chrom=CHROMS),
+
+
+rule extract_chrom:
+    input:
+        vcf=VCF,
+    output:
+        "results/extract/chr{chrom}.vcf.gz",
+    benchmark:
+        "benchmarks/extract_chrom/chr{chrom}.tsv"
+    log:
+        "logs/extract_chrom/chr{chrom}.log",
+    threads: 1
+    resources:
+        mem_mb=500,
+        runtime=10,
+    shell:
+        "bcftools view -r {wildcards.chrom} -Oz -o {output} {input.vcf} 2> {log}"
+
+
+rule sort_vcf:
+    input:
+        "results/extract/chr{chrom}.vcf.gz",
+    output:
+        "results/sorted/chr{chrom}.vcf.gz",
+    benchmark:
+        "benchmarks/sort_vcf/chr{chrom}.tsv"
+    log:
+        "logs/sort_vcf/chr{chrom}.log",
+    threads: 1
+    resources:
+        mem_mb=sort_vcf_mem_mb,
+        runtime=sort_vcf_runtime,
+    shell:
+        "bcftools sort -m 256M -T results/sorted/tmp_{wildcards.chrom} -Oz -o {output} {input} 2> {log}"
+
+
+rule stats:
+    input:
+        "results/sorted/chr{chrom}.vcf.gz",
+    output:
+        "results/stats/chr{chrom}.stats.txt",
+    benchmark:
+        "benchmarks/stats/chr{chrom}.tsv"
+    log:
+        "logs/stats/chr{chrom}.log",
+    threads: 2
+    resources:
+        mem_mb=1000,
+        runtime=10,
+    shell:
+        "bcftools stats --threads {threads} {input} > {output} 2> {log}"

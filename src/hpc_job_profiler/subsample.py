@@ -52,7 +52,6 @@ class Subsample:
     size_bytes: int
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form with the path as text."""
         data = asdict(self)
         data["path"] = str(self.path)
         return data
@@ -77,7 +76,6 @@ def strip_compression_suffix(name: str) -> str:
 
 
 def detect_kind(path: str | Path) -> InputKind:
-    """Guess the input format from the file name."""
     name = strip_compression_suffix(Path(path).name.lower())
     if name.endswith(".vcf"):
         return InputKind.VCF
@@ -333,7 +331,6 @@ def make_subsamples(
 
 
 def remove_subsamples(subs: Sequence[Subsample]) -> None:
-    """Delete subsample files made by this module."""
     for sub in subs:
         with contextlib.suppress(FileNotFoundError):
             sub.path.unlink()

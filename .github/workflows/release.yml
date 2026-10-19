@@ -63,6 +63,25 @@ jobs:
           path: dist/
       - uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
 
+  image:
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Build and push ghcr.io/daneshpajouh/hpc-job-profiler
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          image="ghcr.io/daneshpajouh/hpc-job-profiler"
+          echo "${GH_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          docker build -t "${image}:${GITHUB_REF_NAME#v}" -t "${image}:latest" .
+          docker run --rm "${image}:${GITHUB_REF_NAME#v}" --version
+          docker push "${image}:${GITHUB_REF_NAME#v}"
+          docker push "${image}:latest"
+
   github-release:
     needs: pypi
     runs-on: ubuntu-latest

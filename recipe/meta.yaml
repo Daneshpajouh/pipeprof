@@ -1,0 +1,49 @@
+# Draft for conda-forge staged-recipes. Fill sha256 from the PyPI sdist after
+# the first release (`pip download hpc-job-profiler==1.0.0 --no-binary :all:`).
+{% set name = "hpc-job-profiler" %}
+{% set version = "1.0.0" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/hpc_job_profiler-{{ version }}.tar.gz
+  sha256: SHA256_OF_THE_PYPI_SDIST
+
+build:
+  noarch: python
+  number: 0
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  entry_points:
+    - hjp = hpc_job_profiler.cli:main
+
+requirements:
+  host:
+    - python >=3.11
+    - hatchling >=1.24
+    - pip
+  run:
+    - python >=3.11
+    - psutil >=5.9
+    - typer >=0.12
+    - rich >=13
+
+test:
+  imports:
+    - hpc_job_profiler
+  commands:
+    - hjp --version
+    - hjp report --show-sacct
+  requires:
+    - pip
+
+about:
+  home: https://github.com/Daneshpajouh/hpc-job-profiler
+  summary: Profile bioinformatics jobs before, during and after Slurm submission.
+  license: Apache-2.0
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - Daneshpajouh

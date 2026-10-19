@@ -67,7 +67,6 @@ class TaskRecord:
     notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON ready form."""
         return asdict(self)
 
 

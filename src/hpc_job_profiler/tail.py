@@ -27,7 +27,6 @@ def sparkline(values: list[float], width: int = 40) -> str:
 
 
 def render(records: list[dict[str, Any]]) -> Group:
-    """Build the view from watch log records."""
     samples = [r for r in records if r.get("type") == "sample"]
     alerts = [r for r in records if r.get("type") == "alert"]
     table = Table(title="hjp watch", show_header=True)
