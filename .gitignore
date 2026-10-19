@@ -1,0 +1,29 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+site/
+dist/
+build/
+.DS_Store
+# raw data never lives in the repository
+data/
+runs/
+*.bam
+*.bai
+*.cram
+*.vcf.gz
+*.tbi
+# example workflow outputs
+examples/*/results/
+examples/*/benchmarks/
+examples/*/logs/
+examples/*/.snakemake/
+examples/*/hjp_report/
