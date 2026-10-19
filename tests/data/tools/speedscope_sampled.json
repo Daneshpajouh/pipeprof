@@ -1,0 +1,23 @@
+{
+  "$schema": "https://www.speedscope.app/file-format-schema.json",
+  "shared": {
+    "frames": [
+      {"name": "main", "file": "app.py", "line": 1},
+      {"name": "foo", "file": "app.py", "line": 10},
+      {"name": "bar", "file": "app.py", "line": 20}
+    ]
+  },
+  "profiles": [
+    {
+      "type": "sampled",
+      "name": "pid 1234",
+      "unit": "samples",
+      "startValue": 0,
+      "endValue": 10,
+      "samples": [[0, 1], [0, 1, 2], [0, 1, 1], [0, 2]],
+      "weights": [2, 3, 1, 4]
+    }
+  ],
+  "activeProfileIndex": 0,
+  "exporter": "py-spy"
+}

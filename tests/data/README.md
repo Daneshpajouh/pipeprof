@@ -28,4 +28,7 @@ files were produced by a local run while building this repository.
 | `tools/psrecord_ok.txt` | hand-written, psrecord `--log` column layout ([astrofrog/psrecord README](https://github.com/astrofrog/psrecord), psrecord not installed here) | elapsed seconds, CPU percent, real and virtual MB rising then flat |
 | `tools/psrecord_empty.txt` | hand-written, same format | header only, no samples |
 
+| `tools/speedscope_sampled.json` | hand-written, speedscope file format schema ([speedscope.app/file-format-schema.json](https://www.speedscope.app/file-format-schema.json), py-spy not installed here) | a "sampled" profile (py-spy's own type) with a frame (`foo`) that calls itself, to check recursion counts once toward total |
+| `tools/speedscope_evented.json` | hand-written, same schema | an "evented" profile, open/close events reconstructed into stacks |
+
 In `snakemake_macos_run/` the repository path is replaced with `REPO`, the data folder with `DATA_DIR` and the macOS temporary folder with `TMPDIR`; nothing else was edited.
