@@ -19,8 +19,8 @@ Results of the last run of each:
 ```
 $ pytest --cov=hpc_job_profiler            # macOS, Python 3.13.9, 2026-10-19 12:14
 112 passed in 31.18s; TOTAL 2177 statements, 97% coverage (branch coverage on)
-$ docker run --rm hjp-test                # Debian, python:3.13-slim, 2026-10-19 12:11
-111 passed in 10.58s; TOTAL 2169 statements, 97%
+$ docker run --rm hjp-test                # Debian, python:3.13-slim, 2026-10-19 12:16
+112 passed in 9.08s; TOTAL 2177 statements, 97%
 $ bats tests/shell/fetch_data.bats
 ok 1 reuses present files and prints their SHA-256
 ok 2 stops on an MD5 mismatch
