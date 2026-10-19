@@ -31,6 +31,8 @@ class ModelKind(StrEnum):
 
     LINEAR = "linear"
     POWER = "power"
+    # Fallback when every fitted curve decreases with input size.
+    CONSTANT = "largest_measured"
 
 
 class FitError(ValueError):
@@ -147,6 +149,8 @@ class Fit:
         return math.log(x) if self.kind is ModelKind.POWER else x
 
     def predict(self, x: float) -> float:
+        if self.kind is ModelKind.CONSTANT:
+            return self.intercept
         value = self.intercept + self.slope * self._tx(x)
         return math.exp(value) if self.kind is ModelKind.POWER else value
 
@@ -156,6 +160,8 @@ class Fit:
         With fewer than three points there is no residual variance estimate,
         so the interval collapses to the point prediction.
         """
+        if self.kind is ModelKind.CONSTANT:
+            return self.intercept, self.intercept
         centre = self.intercept + self.slope * self._tx(x)
         if self.dof < 1 or self.sxx <= 0:
             half = 0.0
@@ -169,6 +175,8 @@ class Fit:
 
     def formula(self, var: str = "x") -> str:
         """Human readable formula in the original units."""
+        if self.kind is ModelKind.CONSTANT:
+            return f"{self.intercept:.6g} (largest measured value)"
         if self.kind is ModelKind.POWER:
             return f"{math.exp(self.intercept):.6g} * {var}^{self.slope:.4f}"
         sign = "+" if self.slope >= 0 else "-"
@@ -271,6 +279,11 @@ class Selection:
         }
 
 
+def constant_fit(ys: Sequence[float]) -> Fit:
+    """The largest measured value, used when no fitted curve grows with input size."""
+    return Fit(ModelKind.CONSTANT, max(ys), 0.0, len(ys), 0.0, 0.0, 0.0)
+
+
 def select_model(
     xs: Sequence[float],
     ys: Sequence[float],
@@ -278,31 +291,46 @@ def select_model(
 ) -> Selection:
     """Fit each candidate and choose the one with the lowest extrapolation CV score.
 
-    Ties (within 1e-9) go to the linear model, the simpler of the two. When no
-    model can be scored (fewer than three distinct sizes) the linear model is
-    used and the reason says so.
+    A fit whose slope or exponent is negative is rejected: time, CPU and
+    memory do not shrink as the input grows, and such a fit usually comes from
+    start-up cost in the smallest runs. If every candidate is rejected the
+    largest measured value is used. Ties (within 1e-9) go to the linear model.
+    With fewer than three distinct sizes there is no cross-validation and the
+    linear model is used.
     """
     fits: dict[ModelKind, Fit] = {}
     scores: dict[ModelKind, float | None] = {}
     errors: dict[ModelKind, list[float]] = {}
+    rejected: list[str] = []
     for kind in candidates:
         try:
-            fits[kind] = FITTERS[kind](xs, ys)
+            fit = FITTERS[kind](xs, ys)
         except FitError:
+            continue
+        fits[kind] = fit
+        if fit.slope < 0:
+            rejected.append(f"{kind} (slope {fit.slope:.3g})")
             continue
         errs = extrapolation_errors(xs, ys, kind)
         errors[kind] = errs
         scores[kind] = sum(errs) / len(errs) if errs else None
     if not fits:
         raise FitError("no model could be fitted to these points")
-    scored = {k: s for k, s in scores.items() if s is not None}
+    note = f"; rejected decreasing {', '.join(rejected)}" if rejected else ""
+    usable = [k for k in fits if fits[k].slope >= 0]
+    if not usable:
+        chosen = constant_fit(ys)
+        fits[ModelKind.CONSTANT] = chosen
+        reason = "every fit decreased with input size, so the largest measured value is used"
+        return Selection(chosen, fits, scores, errors, reason + note)
+    scored = {k: v for k, v in scores.items() if v is not None}
     if not scored:
-        chosen_kind = ModelKind.LINEAR if ModelKind.LINEAR in fits else next(iter(fits))
+        chosen_kind = ModelKind.LINEAR if ModelKind.LINEAR in usable else usable[0]
         reason = "fewer than three distinct sizes, so no cross-validation; linear by default"
     else:
         best = min(scored.values())
-        tied = [k for k, s in scored.items() if s - best <= 1e-9]
+        tied = [k for k, v in scored.items() if v - best <= 1e-9]
         chosen_kind = ModelKind.LINEAR if ModelKind.LINEAR in tied else tied[0]
-        detail = ", ".join(f"{k}={s:.4f}" for k, s in scored.items())
+        detail = ", ".join(f"{k}={v:.4f}" for k, v in scored.items())
         reason = f"lowest mean absolute log extrapolation error ({detail})"
-    return Selection(fits[chosen_kind], fits, scores, errors, reason)
+    return Selection(fits[chosen_kind], fits, scores, errors, reason + note)

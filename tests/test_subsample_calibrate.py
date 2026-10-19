@@ -200,3 +200,64 @@ def test_calibrate_shell_mode_records_and_failures(tmp_path: Path) -> None:
         calibrate(vcf, ["true"], workdir=tmp_path, x_variable="lines")
     with pytest.raises(CalibrationError, match="repeats"):
         calibrate(vcf, ["true"], workdir=tmp_path, repeats=0)
+
+
+SINGLE_THREAD = """
+import sys, time
+n = sum(1 for _ in open(sys.argv[1]))
+start = time.process_time()
+while time.process_time() - start < n * 2e-6:
+    pass
+time.sleep(0.02 + n * 1e-6)
+open(sys.argv[2], "w").write(str(n))
+"""
+
+
+def test_cpu_request_comes_from_measured_runs(tmp_path: Path) -> None:
+    # Single threaded: every run uses under one core, whatever models the
+    # wall and CPU fits choose, so the request must be 1 CPU.
+    script = tmp_path / "one_core.py"
+    script.write_text(SINGLE_THREAD)
+    vcf = write_vcf(tmp_path / "in.vcf", 60000)
+    result = calibrate(
+        vcf,
+        [PY, str(script), "{input}", "{output}"],
+        workdir=tmp_path / "w",
+        fractions=[0.02, 0.05, 0.1, 0.2, 0.4],
+        threads=4,
+    )
+    ratios = [p.measurement.cpu_s / p.measurement.wall_s for p in result.points]
+    assert max(ratios) < 1.0
+    assert result.plan.cpus == 1
+
+
+def test_cpus_from_runs_ignores_extrapolated_ratio() -> None:
+    from hpc_job_profiler.calibrate import RunPoint, cpus_from_runs
+    from hpc_job_profiler.measure import Measurement
+
+    def point(wall: float, cpu: float) -> RunPoint:
+        m = Measurement("x", 0, wall, cpu, 0.0, 1, 1, 1, None, None, 0, 0, 1, 0.05)
+        return RunPoint(0.1, 1, "p", 1, 1, m)
+
+    # The reviewer's case: per-run CPU/wall 0.11 to 0.68.
+    runs = [point(1.0, 0.11), point(1.0, 0.4), point(1.0, 0.68)]
+    assert cpus_from_runs(runs, threads=8) == (1, 0.68)
+    busy = [point(1.0, 3.2)]
+    assert cpus_from_runs(busy, threads=8)[0] == 4
+    assert cpus_from_runs(busy, threads=2)[0] == 2  # capped at --threads
+
+
+def test_decreasing_series_never_predicts_below_measured(tmp_path: Path) -> None:
+    # Start-up cost dominates: the smallest run is the slowest.
+    from hpc_job_profiler.fit import ModelKind, select_model
+
+    xs = [1.0, 2.0, 5.0, 10.0, 20.0]
+    ys = [0.057, 0.026, 0.030, 0.038, 0.030]
+    sel = select_model(xs, ys)
+    assert sel.chosen.slope >= 0
+    falling = select_model(xs, [5.0, 4.0, 3.0, 2.5, 2.0])
+    assert falling.chosen.kind is ModelKind.CONSTANT
+    assert falling.chosen.predict(100.0) == 5.0
+    assert falling.chosen.interval(100.0) == (5.0, 5.0)
+    assert "largest measured" in falling.chosen.formula()
+    assert "rejected decreasing" in falling.reason

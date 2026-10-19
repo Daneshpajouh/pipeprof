@@ -107,20 +107,11 @@ class ConsoleFormatter(logging.Formatter):
 
 
 class RunLogger:
-    """A logger bound to one run ID that writes JSON lines and optional console text.
+    """A logger bound to one run ID that writes JSON lines and, optionally, console text.
 
-    Parameters
-    ----------
-    name:
-        Logger name, usually the tool or pipeline step.
-    jsonl_path:
-        File that receives one JSON object per line. Parent folders are created.
-    run_id:
-        Shared run ID. Defaults to :func:`new_run_id`.
-    console:
-        Stream for human readable lines, or ``None`` for no console output.
-    level:
-        Minimum level to record.
+    ``jsonl_path`` gets one JSON object per line (parent folders are made);
+    ``console`` gets short text lines, or nothing when it is ``None``.
+    ``run_id`` defaults to :func:`new_run_id`, which honours ``HJP_RUN_ID``.
     """
 
     def __init__(

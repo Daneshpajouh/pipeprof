@@ -39,6 +39,18 @@ less costs `ln(1000)`. Ties go to the linear model.
 
 With the default five fractions, three points are scored per model.
 
+A fit with a negative slope or exponent is rejected before scoring: time,
+CPU and memory do not fall as the input grows, and a falling fit comes from
+start-up cost in the smallest runs. If both fits fall, the largest measured
+value is used and the reason in `calibration.json` says so. Separately, the
+prediction for the full input is never below the largest measured value. One
+unmeasured warm-up run on the smallest subsample comes first (`--no-warmup`
+turns it off).
+
+The CPU request is taken from the measured runs, not from the two
+predictions: CPU time and wall time of one run are measured together, while
+their extrapolations can come from different models.
+
 ## Prediction interval
 
 For a new observation at `x0` the standard OLS interval is
@@ -57,7 +69,7 @@ to four decimals.
 
     memory request = round_up(upper_95(peak RSS) * 1.2)      steps: 256 MiB, 1 GiB, 4 GiB
     time request   = round_up(upper_95(wall) * 1.5)          steps: 5 min, 15 min, 1 h; at least 5 min
-    CPUs           = threads, or ceil(CPU/wall - 0.15) when the tool used more than 1.15 cores
+    CPUs           = ceil(max over measured runs of CPU/wall - 0.15), between 1 and --threads
 
 The Snakemake and Nextflow snippets keep the fitted curve as a function of
 input size (`input.size_mb`, `file.size()`), multiply by a safety factor

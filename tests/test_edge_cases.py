@@ -123,3 +123,9 @@ def test_interval_contains_point(a: float, b: float, x0: float) -> None:
     lo, hi = sel.chosen.interval(x0)
     assert lo <= sel.chosen.predict(x0) <= hi
     assert sel.chosen.kind in {ModelKind.LINEAR, ModelKind.POWER}
+
+
+def test_bare_reqmem_on_two_nodes_is_whole_job(data: Path) -> None:
+    records = {r.job_id: r for r in parse_sacct((data / "sacct_memory_units.txt").read_text())}
+    assert records["3005"].req_mem_bytes == 2000 * MIB
+    assert records["3005"].max_rss_bytes == 900 * MIB

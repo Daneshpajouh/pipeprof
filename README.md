@@ -26,11 +26,9 @@ copied from an older script.
 A plain-language explanation of why this saves cluster time is in
 [docs/why_profiling.md](docs/why_profiling.md).
 
-## Quick start (about 5 minutes)
+## Quick start
 
-Needs Python 3.11 or newer. The calibration example also needs `bcftools`
-and `tabix` (for example `brew install bcftools htslib` or
-`apt-get install bcftools tabix`).
+Needs Python 3.11 or newer.
 
 ```bash
 git clone https://github.com/Daneshpajouh/hpc-job-profiler
@@ -38,43 +36,41 @@ cd hpc-job-profiler
 python3 -m venv .venv && . .venv/bin/activate
 pip install -e .
 
-# 1. After: a report from the sacct test data shipped in the repository
+# 1. After (seconds): a report from the sacct test data in the repository
 hjp report --sacct tests/data/sacct_slurm_26_05.txt --outdir report
-open report/report.html   # or xdg-open on Linux
 
-# 2. Before: calibrate bcftools sort on the public ClinVar VCF (200 MB)
-curl -O ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz
-curl -O ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz.tbi
-hjp calibrate clinvar.vcf.gz --outdir cal --job-name sort_vcf --validate-full -- \
-    bcftools sort -m 512M -T '{workdir}/sorttmp' -Oz -o '{output}' '{input}'
-cat cal/sbatch_header.sh cal/snakemake_resources.smk
+# 2. Before (under a minute, no download): calibrate `sort` on 2 million numbers
+python3 -c "import random; r = random.Random(1); print('\n'.join(str(r.random()) for _ in range(2_000_000)))" > numbers.txt
+hjp calibrate numbers.txt --outdir cal --job-name sort_numbers --validate-full -- \
+    sort -o '{output}' '{input}'
+cat cal/sbatch_header.sh
 
 # 3. During: watch a command and view the log
-hjp watch --out watch.jsonl --interval 1 --mem-limit 512M --cpus 2 -- \
-    bcftools sort -m 512M -T ./wsort -Oz -o sorted.vcf.gz clinvar.vcf.gz
+hjp watch --out watch.jsonl --interval 1 --mem-limit 512M -- sort -o sorted.txt numbers.txt
 hjp tail watch.jsonl --once
 ```
 
-What step 2 printed on an Apple M3 Ultra (28 cores, 96 GiB, macOS 27.0.1) on 2026-10-19, for the
-ClinVar release of 2026-10-11 (4,594,764 records):
+Step 2 on an Apple M3 Ultra (macOS 27.0.1, Apple sort 2.3), 2026-10-19:
 
 ```
 metric          model   predicted   95% interval
-wall_s          linear  22.75 s     20.59 s to 24.92 s
-cpu_s           linear  21.26 s     21.07 s to 21.45 s
-peak_rss_bytes  linear  1.7G        1.6G to 1.7G
-Request: --cpus-per-task=1 --mem=3G --time=00:05:00
-full run wall_s: predicted 22.75, actual 23.6, inside interval: True
-full run cpu_s: predicted 21.26, actual 22.09, inside interval: False
-full run peak_rss_bytes: predicted 1.782e+09, actual 4.873e+08, inside interval: False
+wall_s          linear  1.93 s      1.65 s to 2.22 s
+cpu_s           linear  2.50 s      2.09 s to 2.92 s
+peak_rss_bytes  linear  348.3M      309.6M to 387.0M
+Request: --cpus-per-task=1 --mem=512M --time=00:05:00
+full run wall_s: predicted 1.933, actual 2.183, inside interval: True
+full run cpu_s: predicted 2.501, actual 4.221, inside interval: False
+full run peak_rss_bytes: predicted 3.652e+08, actual 4.952e+08, inside interval: False
 ```
 
-Time was predicted within 4 percent. Memory was over-predicted 3.7 times:
-`bcftools sort -m 512M` stops growing its buffer at 512 MB, and the largest
-subsample (20 percent) never reached that cap, so the straight line kept going.
-Calibrating with larger subsamples (5 to 50 percent) brought the error to
-2.0 times. [docs/results.md](docs/results.md) has all four held-out runs,
-including two where time was under-predicted, and how to choose fractions when a tool has a memory cap.
+Time was close. Memory was 26 percent higher than predicted (472 MiB) and the
+512M request covered it with 8 percent to spare. The subsample runs lasted
+0.03 to 0.39 s, too short for a reliable fit, and Apple's sort used 1.9 cores
+on the full input but at most 1.3 on the subsamples; `hjp` logged a warning
+that the command used more cores than `--threads`. Larger inputs give better
+fits: the ClinVar runs in [docs/results.md](docs/results.md) (200 MB VCF,
+download commands in `scripts/fetch_data.sh`) predicted time within 4 percent,
+and that page also shows the cases where memory or time was off and why.
 
 ## What it reads and writes
 

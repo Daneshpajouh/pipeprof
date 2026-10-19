@@ -9,6 +9,14 @@ Versions follow [Semantic Versioning](https://semver.org/).
   Found by a run in a `python:3.12-slim` container without git, where two
   tests failed. The library already returned `commit: None` there.
 - `provenance.git_state` logs at debug level when git is missing or fails.
+- CPU request from the busiest measured run (CPU/wall), capped at
+  `--threads`, instead of dividing two separately extrapolated predictions,
+  which asked for 4 CPUs for a single-threaded `bcftools sort`.
+- Fits that decrease with input size are rejected; the full-input prediction
+  is never below the largest measured value; one warm-up run before measuring.
+- Report wording: "1 completed task" with a note that it is a single run.
+- Classifier "Development Status :: 4 - Beta".
+- README quick start runs in under a minute without a download.
 
 ## 1.0.0 (2026-10-19)
 

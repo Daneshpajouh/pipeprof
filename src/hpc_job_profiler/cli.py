@@ -90,6 +90,9 @@ def calibrate_cmd(
         bool, typer.Option(help="Also run on the full input and compare with the prediction.")
     ] = False,
     seed: Annotated[int, typer.Option(help="Subsampling seed.")] = 13,
+    warmup: Annotated[
+        bool, typer.Option(help="Run the smallest subsample once, unmeasured, first.")
+    ] = True,
 ) -> None:
     """Run COMMAND on graduated subsamples of INPUT_PATH and predict the full run."""
     outdir.mkdir(parents=True, exist_ok=True)
@@ -114,6 +117,7 @@ def calibrate_cmd(
             account=account,
             output_suffix=output_suffix,
             validate_full=validate_full,
+            warmup=warmup,
             logger=log,
         )
     except (CalibrationError, SubsampleError, OSError) as exc:

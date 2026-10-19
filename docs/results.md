@@ -82,6 +82,21 @@ What this shows:
   ratio matters little for a single job and pays off for job arrays that run
   the same step on hundreds of inputs.
 
+Minimum size for a meaningful fit. In runs C and D the 1 and 2 percent
+subsamples took 0.13 to 0.40 s, and start-up and page cache effects were a
+visible share of that. Choose fractions so the smallest measured run takes at
+least about 1 s, or add `--repeats 3`. Since v1.0.1 `calibrate` makes one
+unmeasured warm-up run first, rejects fits that decrease with input size, and
+never predicts below the largest measured value.
+
+A reviewer found that v1.0.0 could request too many CPUs: on a synthetic
+200,000-record VCF (6.1 MB) sorted by single-threaded `bcftools sort`, every
+run used 0.23 to 0.78 cores, but the request was `--cpus-per-task=4` because
+the CPU and wall time predictions came from different models (linear and
+power) and were divided. Since v1.0.1 the CPU request is the busiest measured
+run's CPU time over wall time, rounded up and capped at `--threads`. The same
+input now gives `--cpus-per-task=1`.
+
 What the tool does with this: [algorithm.md](algorithm.md) recommends
 fractions that cross any buffer size the tool is given (`-m`, `--mem`,
 `-S`), and the roadmap in the repository has a milestone to widen the
@@ -131,7 +146,8 @@ peak to 1.43 times, and from 280 times the run time to 140 times (the 5-minute
 floor).
 
 In the first of the two runs one `stats` job failed inside Snakemake's
-benchmark code; in the second all 19 steps completed.
+benchmark code; in the second all 18 jobs completed (19 steps with the `all`
+target).
 
 ## `hjp watch` on a real run
 

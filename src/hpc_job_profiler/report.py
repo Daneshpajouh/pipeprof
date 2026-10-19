@@ -186,6 +186,10 @@ def _spread(values: Sequence[float]) -> tuple[float, float, float] | None:
     return (min(values), statistics.median(values), max(values))
 
 
+def _tasks(n: int) -> str:
+    return "1 completed task (a single run; confirm on more)" if n == 1 else f"{n} completed tasks"
+
+
 def recommend(name: str, group: Sequence[TaskMetrics], thresholds: Thresholds) -> Recommendation:
     """Recommend a request for one group from its completed and failed records."""
     records = [m.record for m in group]
@@ -199,8 +203,8 @@ def recommend(name: str, group: Sequence[TaskMetrics], thresholds: Thresholds) -
     if rss:
         mem = round_up_memory(max(rss) * thresholds.mem_headroom)
         basis.append(
-            f"memory: max peak RSS {format_memory(max(rss))} over {len(rss)} completed "
-            f"tasks x {thresholds.mem_headroom}"
+            f"memory: max peak RSS {format_memory(max(rss))} over {_tasks(len(rss))} "
+            f"x {thresholds.mem_headroom}"
         )
     elif done:
         basis.append("memory: no peak RSS recorded for completed tasks; no recommendation")
@@ -216,8 +220,8 @@ def recommend(name: str, group: Sequence[TaskMetrics], thresholds: Thresholds) -
     if elapsed:
         time_s = round_up_minutes(max(elapsed) * thresholds.time_headroom) * 60
         basis.append(
-            f"time: max elapsed {format_slurm_duration(max(elapsed))} over {len(elapsed)} "
-            f"completed tasks x {thresholds.time_headroom}"
+            f"time: max elapsed {format_slurm_duration(max(elapsed))} over "
+            f"{_tasks(len(elapsed))} x {thresholds.time_headroom}"
         )
     if timeouts:
         limits = [r.time_limit_s for r in timeouts if r.time_limit_s is not None]

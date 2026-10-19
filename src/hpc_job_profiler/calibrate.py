@@ -223,6 +223,21 @@ def measure_once(
     return measurement
 
 
+def cpus_from_runs(points: Sequence[RunPoint], threads: int) -> tuple[int, float]:
+    """CPUs to request, from the busiest measured run; also returns that run's cores busy.
+
+    CPU time and wall time are measured on the same run, so their ratio is
+    reliable; dividing two separately extrapolated predictions is not (each
+    may pick a different model). The request is at least 1 and at most
+    ``threads``.
+    """
+    ratios = [
+        p.measurement.cpu_s / p.measurement.wall_s for p in points if p.measurement.wall_s > 0
+    ]
+    busiest = max(ratios, default=0.0)
+    return max(1, min(threads, math.ceil(busiest - 0.15))), busiest
+
+
 def calibrate(
     input_path: str | Path,
     template: Sequence[str],
@@ -245,6 +260,7 @@ def calibrate(
     nf_input_var: str = "input_file",
     output_suffix: str | None = None,
     validate_full: bool = False,
+    warmup: bool = True,
     keep_subsamples: bool = False,
     logger: RunLogger | None = None,
 ) -> CalibrationResult:
@@ -268,6 +284,20 @@ def calibrate(
 
     points: list[RunPoint] = []
     try:
+        if warmup:
+            # One discarded run loads the binary and libraries into the page cache, so
+            # the smallest measured run does not carry that start-up cost alone.
+            with log.step("warmup", input=str(subs[0].path)):
+                measure_once(
+                    template,
+                    subs[0].path,
+                    work,
+                    "warmup",
+                    shell=shell,
+                    threads=threads,
+                    interval=interval,
+                    output_suffix=output_suffix,
+                )
         for sub in subs:
             for repeat in range(1, repeats + 1):
                 with log.step(
@@ -307,18 +337,30 @@ def calibrate(
         for metric in METRICS:
             ys = [max(p.value(metric), 1e-9) for p in points]
             selection = select_model(xs, ys)
+            point = selection.chosen.predict(x_full)
             lower, upper = selection.chosen.interval(x_full, level)
-            predictions[metric] = Prediction(
-                metric, selection.chosen.predict(x_full), lower, upper, level, selection
-            )
+            largest = max(ys)
+            if x_full >= max(xs) and point < largest:
+                # The full input cannot need less than its largest subsample did.
+                selection.reason += (
+                    f"; prediction {point:.4g} raised to the largest measured value {largest:.4g}"
+                )
+                point = largest
+                upper = max(upper, largest)
+            predictions[metric] = Prediction(metric, point, lower, upper, level, selection)
             info[metric] = {
                 "model": str(selection.chosen.kind),
                 "point": predictions[metric].point,
                 "upper": upper,
             }
 
-    cpu_ratio = predictions["cpu_s"].point / max(predictions["wall_s"].point, 1e-9)
-    cpus = max(threads, math.ceil(cpu_ratio - 0.15)) if cpu_ratio > 1.15 else threads
+    cpus, busiest = cpus_from_runs(points, threads)
+    if busiest > threads + 0.15:
+        log.warning(
+            f"the command kept {busiest:.2f} cores busy with --threads {threads}; "
+            "the request is capped at --threads, so pass the tool's thread option",
+            busiest_cores=round(busiest, 3),
+        )
     plan = make_plan(
         cpus=cpus,
         peak_rss=predictions["peak_rss_bytes"].point,

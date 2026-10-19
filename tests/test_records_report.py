@@ -214,3 +214,21 @@ def test_recorded_sacct_from_slurm_20_02_container(data: Path) -> None:
     assert recs["arr"].time_s == 300
     assert any("limit not recorded" in b for b in recs["too_long"].basis)
     assert recs["fails"].basis == ["no completed tasks with measurements; no recommendation"]
+
+
+def test_single_task_recommendation_says_so() -> None:
+    rec = TaskRecord(
+        source="sacct",
+        job_id="1",
+        name="one",
+        state="COMPLETED",
+        elapsed_s=600,
+        cpu_time_s=550,
+        alloc_cpus=1,
+        req_mem_bytes=GIB,
+        max_rss_bytes=GIB // 4,
+        time_limit_s=3600,
+    )
+    basis = build_report([rec]).recommendations[0].basis
+    assert any("1 completed task (a single run" in b for b in basis)
+    assert not any("1 completed tasks" in b for b in basis)
