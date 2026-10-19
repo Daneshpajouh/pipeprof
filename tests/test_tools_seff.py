@@ -64,3 +64,22 @@ def test_cpu_percent_is_per_one_core(data: Path) -> None:
     usage = parse_seff(no_cores)
     assert usage.cpu_percent is None
     assert any(n.startswith("CPU efficiency: 83.33%") for n in usage.notes)
+
+
+@pytest.mark.parametrize("unit", ["node", "core"])
+def test_memory_efficiency_with_per_unit_suffix(data: Path, unit: str) -> None:
+    # Some seff versions add the request per node or per core after the total.
+    text = (data / "tools" / "seff_completed.txt").read_text().replace(
+        "Memory Efficiency: 50.00% of 1.00 GB",
+        f"Memory Efficiency: 50.00% of 1.00 GB (256.00 MB/{unit})",
+    )
+    usage = parse_seff(text)
+    assert any("memory efficiency: 50.0% of" in note for note in usage.notes)
+
+
+def test_unread_memory_efficiency_line_is_noted(data: Path) -> None:
+    text = (data / "tools" / "seff_completed.txt").read_text().replace(
+        "Memory Efficiency: 50.00% of 1.00 GB", "Memory Efficiency: n/a"
+    )
+    usage = parse_seff(text)
+    assert "memory efficiency line not read: Memory Efficiency: n/a" in usage.notes

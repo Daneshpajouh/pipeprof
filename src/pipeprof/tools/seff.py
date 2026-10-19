@@ -28,9 +28,14 @@ _WALLCLOCK_RE = re.compile(r"^Job Wall-clock time:\s*(\S+)\s*$", re.MULTILINE)
 _MEM_UTILIZED_RE = re.compile(
     r"^Memory Utilized:\s*([0-9.]+\s*[KMGTP]?i?B?)\s*(\(estimated maximum\))?\s*$", re.MULTILINE
 )
+# Some seff versions end the line with the request per node or per core,
+# "(1.00 GB/node)"; the total before it is what is read.
 _MEM_EFFICIENCY_RE = re.compile(
-    r"^Memory Efficiency:\s*([0-9.]+)%\s*of\s*([0-9.]+\s*[KMGTP]?i?B?)\s*$", re.MULTILINE
+    r"^Memory Efficiency:\s*([0-9.]+)%\s*of\s*([0-9.]+\s*[KMGTP]?i?B?)"
+    r"(?:\s*\([0-9.]+\s*[KMGTP]?i?B?/(?:node|core)\))?\s*$",
+    re.MULTILINE,
 )
+_MEM_EFFICIENCY_LINE_RE = re.compile(r"^Memory Efficiency:.*$", re.MULTILINE)
 _RUNNING_WARNING_RE = re.compile(
     r"^WARNING: Efficiency statistics may be misleading for RUNNING jobs\.\s*$", re.MULTILINE
 )
@@ -113,6 +118,8 @@ def parse_seff(text: str, step: str | None = None) -> StepUsage:
         efficiency = parse_percent(mem_efficiency_match.group(1) + "%")
         requested = parse_memory(mem_efficiency_match.group(2))
         notes.append(f"memory efficiency: {efficiency}% of {requested} bytes requested")
+    elif line := _MEM_EFFICIENCY_LINE_RE.search(text):
+        notes.append(f"memory efficiency line not read: {line.group(0).strip()}")
 
     return StepUsage(
         source="seff",
