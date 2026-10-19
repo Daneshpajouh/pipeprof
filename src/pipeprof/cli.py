@@ -511,6 +511,7 @@ def usage_cmd(
     if tool not in _USAGE_READERS:
         console.print(f"[red]unknown tool {tool!r}; use one of {', '.join(_USAGE_READERS)}[/red]")
         raise typer.Exit(2)
+    _require_inputs([path])
     module_name, func_name = _USAGE_READERS[tool].split(":")
     reader = getattr(importlib.import_module(module_name), func_name)
     try:

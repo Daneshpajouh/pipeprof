@@ -121,3 +121,11 @@ def test_apply_usage_cpu_share_over_the_task_wall_time() -> None:
                     cpus=1, status="COMPLETED")]
     apply_usage(untimed, usage)
     assert untimed[0].cpu_percent == 50.0
+
+
+def test_usage_command_missing_file_is_one_line(tmp_path: Path) -> None:
+    missing = tmp_path / "nope.time"
+    result = runner.invoke(app, ["usage", "bsd-time", str(missing), "--step", "x"])
+    assert result.exit_code == 2
+    assert not isinstance(result.exception, FileNotFoundError)
+    assert result.stderr.strip() == f"pipeprof: input not found: {missing}"
