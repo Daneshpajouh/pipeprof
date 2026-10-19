@@ -14,15 +14,15 @@ on macOS and in the `python:3.13-slim` Linux container.
 | Linux container | the whole suite on Debian with apt's samtools 1.21 | `docker build --target test -t hjp-test . && docker run --rm hjp-test` |
 | Real data | the four held-out calibrations in [results.md](results.md) | commands in results.md |
 
-Results of the last run of each:
+Results of the last run of each (v1.0.1, 2026-10-19 12:48 Pacific):
 
 ```
-$ pytest --cov=hpc_job_profiler            # macOS, Python 3.13.9, 2026-10-19 12:14
-112 passed in 31.18s; TOTAL 2177 statements, 97% coverage (branch coverage on)
-$ docker run --rm hjp-test                # Debian, python:3.13-slim, 2026-10-19 12:16
-112 passed in 9.08s; TOTAL 2177 statements, 97%
-$ git clone . /tmp/c && docker build --target test -t c /tmp/c && docker run --rm c   # fresh clone, 12:17
-112 passed in 8.74s; TOTAL 97%
+$ pytest --cov=hpc_job_profiler      # macOS, Python 3.13.9
+119 passed; TOTAL 2218 statements, 97% coverage (branch coverage on)
+$ git clone . c && docker build --target test -t t c && docker run --rm t   # Debian, Python 3.13.16, git 2.47.3
+119 passed in 9.46s; TOTAL 97%
+# python:3.12-slim with samtools, bcftools, tabix, procps and no git, source from git archive
+118 passed, 1 skipped in 10.33s (git is not installed on this host); TOTAL 97%
 $ bats tests/shell/fetch_data.bats
 ok 1 reuses present files and prints their SHA-256
 ok 2 stops on an MD5 mismatch
