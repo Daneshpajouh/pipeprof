@@ -102,7 +102,9 @@ def pick_first_step(path: CriticalPath, factor: float = 2.0) -> FirstStepAdvice 
     )
 
 
-def thread_scaling_advice(step: str, wall_s_by_threads: Mapping[int, float]) -> ThreadAdvice | None:
+def thread_scaling_advice(
+    step: str, wall_s_by_threads: Mapping[int, float]
+) -> ThreadAdvice | None:
     """Flag a step where going from 2 to 4 threads is not worth it.
 
     ``wall_s_by_threads`` maps thread count to wall time, for example the
@@ -152,8 +154,11 @@ def request_advice(step: str, tasks: Sequence[Task]) -> list[RequestAdvice]:
         if t.status == "COMPLETED" and t.max_rss_bytes is not None and t.mem_request_bytes
     ]
     if completed:
-        worst = max(completed, key=lambda t: t.max_rss_bytes / t.mem_request_bytes)  # type: ignore[operator]
-        frac = worst.max_rss_bytes / worst.mem_request_bytes  # type: ignore[operator]
+        def _frac(t: Task) -> float:
+            return t.max_rss_bytes / t.mem_request_bytes  # type: ignore[operator]
+
+        worst = max(completed, key=_frac)
+        frac = _frac(worst)
         if frac < REQUEST_TOO_LARGE_FRACTION:
             out.append(
                 RequestAdvice(

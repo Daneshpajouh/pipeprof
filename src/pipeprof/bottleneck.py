@@ -179,7 +179,8 @@ def step_shares(tasks: Sequence[Task], path: CriticalPath) -> list[StepShare]:
     """Each step's time on the critical path, and its busy time over every task."""
     on_path: dict[str, float] = {}
     for s in path.steps:
-        on_path[s.task.step] = on_path.get(s.task.step, 0.0) + (s.task.end - s.task.start)  # type: ignore[operator]
+        busy_s = s.task.end - s.task.start  # type: ignore[operator]
+        on_path[s.task.step] = on_path.get(s.task.step, 0.0) + busy_s
     busy: dict[str, float] = {}
     counts: dict[str, int] = {}
     for t in tasks:

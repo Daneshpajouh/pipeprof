@@ -348,7 +348,11 @@ def _analysis_markdown(
 
 
 def _analysis_json(
-    source: str, task_count: int, report: BottleneckReport, labels: list[BoundLabel], advice: Advice
+    source: str,
+    task_count: int,
+    report: BottleneckReport,
+    labels: list[BoundLabel],
+    advice: Advice,
 ) -> str:
     data = {
         "source": source,

@@ -72,15 +72,23 @@ def label_step(name: str, tasks: Sequence[Task]) -> BoundLabel:
 
     evidence: list[str] = []
     if avg_cpu is not None:
-        evidence.append(f"CPU use {avg_cpu:.0%} of requested cores over {len(cpu_shares)} task(s)")
+        evidence.append(
+            f"CPU use {avg_cpu:.0%} of requested cores over {len(cpu_shares)} task(s)"
+        )
     if avg_io is not None:
-        evidence.append(f"I/O rate {avg_io / (1024 * 1024):.1f} MiB/s over {len(io_rates)} task(s)")
+        evidence.append(
+            f"I/O rate {avg_io / (1024 * 1024):.1f} MiB/s over {len(io_rates)} task(s)"
+        )
     if max_mem is not None:
-        evidence.append(f"peak RSS {max_mem:.0%} of requested memory over {len(mem_fracs)} task(s)")
+        evidence.append(
+            f"peak RSS {max_mem:.0%} of requested memory over {len(mem_fracs)} task(s)"
+        )
 
     if max_mem is not None and max_mem >= MEM_BOUND_FRACTION:
         return BoundLabel(
-            name, "memory-bound", [*evidence, f"crossed the {MEM_BOUND_FRACTION:.0%} memory threshold"]
+            name,
+            "memory-bound",
+            [*evidence, f"crossed the {MEM_BOUND_FRACTION:.0%} memory threshold"],
         )
     if avg_cpu is not None and avg_cpu >= CPU_BOUND_THRESHOLD:
         return BoundLabel(
