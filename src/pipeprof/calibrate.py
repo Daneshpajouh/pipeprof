@@ -512,6 +512,17 @@ def predict_metrics(
     return predictions
 
 
+def _basis_detail(pred: Prediction) -> str:
+    """Why a prediction is not a plain fit, for the comment in the emitted snippets.
+
+    The basis note (flat, flat then rising, mostly waiting) explains the number;
+    the model selection reason only says which curve was picked.
+    """
+    detail = pred.note or pred.selection.reason.split(";")[0]
+    prefix = f"{pred.basis}: "
+    return detail[len(prefix) :] if detail.startswith(prefix) else detail
+
+
 def calibrate(
     input_path: str | Path,
     template: Sequence[str],
@@ -651,7 +662,7 @@ def calibrate(
     )
     for pred in predictions.values():
         if pred.basis != "fitted":
-            note += f"\n{pred.metric}: {pred.basis} ({pred.selection.reason.split(';')[0]})"
+            note += f"\n{pred.metric}: {pred.basis} ({_basis_detail(pred)})"
     x_bytes_full = float(full.size_bytes)
     size_mem_fit = mem_sel if x_variable == "bytes" else None
     size_wall_fit = wall_sel if x_variable == "bytes" else None

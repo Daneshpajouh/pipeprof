@@ -405,6 +405,25 @@ def test_emitted_memory_covers_widened_bound(
     assert mem_mb * 10**6 >= plan.predicted_peak_rss_upper_bytes * plan.mem_headroom
 
 
+@pytest.mark.parametrize("shape", ["flat", "hinge"])
+def test_emitted_note_states_the_flat_or_hinge_reason(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, shape: str
+) -> None:
+    def usage(f: float) -> tuple[float, float, float]:
+        rss = 70e6 if shape == "flat" or f <= 0.1 else 70e6 + 3e8 * (f - 0.1)
+        return 100.0 * f, 100.0 * f, rss
+
+    result = _fake_calibrate(tmp_path, monkeypatch, usage)
+    expected = "no growth was seen" if shape == "flat" else "so the model is fitted from there on"
+    for key in ("sbatch", "snakemake_rule", "nextflow_config"):
+        line = next(
+            ln for ln in result.snippets[key].splitlines() if "peak_rss_bytes:" in ln
+        )
+        # The basis explanation, not only the model selection reason.
+        assert expected in line, (key, line)
+        assert "flat: flat" not in line
+
+
 def test_zero_cpu_runs_give_wall_from_observed_range(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
