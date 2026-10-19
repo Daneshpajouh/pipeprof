@@ -98,6 +98,57 @@ status; `pipeprof` marks a failure as out of memory only for exit 137 with peak 
 at 90% or more of the request, and as a timeout for exit 137, 140 or 143 at 95%
 or more of the time limit. Both are labelled "(inferred)".
 
+## Whole-run analysis: `pipeprof analyze`
+
+```bash
+pipeprof analyze --nextflow-trace results/pipeline_info/trace.txt --cpus 16 --outdir analysis
+pipeprof analyze --snakemake-benchmarks benchmarks/ --snakemake-log .snakemake/log/LATEST.snakemake.log --cpus 4
+pipeprof analyze --tsv run.tsv --cpus 8      # any other runner: name, start, end (epoch seconds)
+```
+
+`pipeprof report` says how one job used its request; `pipeprof analyze` looks across a
+whole run (every task in a Nextflow or Snakemake execution, or a plain TSV)
+to find where the time went and what to try next. It builds a timeline of
+tasks (`pipeprof.timeline`), then:
+
+- **Critical path**: the chain of tasks that explains the run's wall time,
+  with the waiting between them shown separately. Nextflow traces and
+  Snakemake logs do not record a dependency graph, so the predecessor of
+  each task is inferred as the last task that finished before it started;
+  the result says which method was used. See
+  [algorithm.md](algorithm.md#critical-path) for the method and its limits.
+- **Step share**: each step's (process or rule) time on the critical path,
+  and its busy time over every task, so a step that looks slow but is never
+  the bottleneck is not confused with one that is.
+- **Parallel efficiency**: tasks running (weighted by CPUs where known)
+  against `--cpus`, as a step function sampled at every start and end; the
+  time-weighted average and the intervals below 50%.
+- **Idle gaps**: spans with nothing running, found by merging overlapping
+  task intervals.
+- **Queue wait**: start minus submit, where the source reports a submit time
+  (Snakemake does not queue its own jobs, so this is empty for it).
+- **Retries**: tasks that needed more than one attempt, and the wall time
+  their failed attempts cost.
+- **Boundness**: each step labelled `cpu-bound`, `io-bound`, `memory-bound`,
+  `mostly waiting` or `unknown`, from CPU use against CPUs requested, I/O
+  rate, and peak RSS against the request; see
+  [algorithm.md](algorithm.md#boundness-thresholds) for the thresholds.
+- **Recommendations**: which critical-path step to speed up first and the
+  expected wall-time saving; where more threads will not help (an I/O-bound
+  or mostly-waiting step, or a measured 2 to 4 thread speed-up under 1.2x);
+  and memory requests that are too large (peak RSS under half the request)
+  or too small (a failed task's peak RSS within 5% of the limit).
+
+`--usage FILE` adds one or more `StepUsage` JSON lines files (one object per
+line, matching `pipeprof.tools.usage.StepUsage`) from a tool reader
+such as GNU `time -v`, psrecord, py-spy or `seff`; with a Nextflow trace or
+Snakemake benchmarks those already carry their own CPU and memory numbers,
+so `--usage` mainly matters for the plain TSV source, where it is the only
+way to bring in CPU, memory and I/O metrics for the boundness labels.
+
+Output: `analysis.md` and `analysis.json` in `--outdir`, the same pattern as
+`pipeprof report`.
+
 ## Logging library
 
 ```python
