@@ -140,11 +140,25 @@ tasks (`pipeprof.timeline`), then:
   or too small (a failed task's peak RSS within 5% of the limit).
 
 `--usage FILE` adds one or more `StepUsage` JSON lines files (one object per
-line, matching `pipeprof.tools.usage.StepUsage`) from a tool reader
-such as GNU `time -v`, psrecord, py-spy or `seff`; with a Nextflow trace or
-Snakemake benchmarks those already carry their own CPU and memory numbers,
-so `--usage` mainly matters for the plain TSV source, where it is the only
-way to bring in CPU, memory and I/O metrics for the boundness labels.
+line, matching `pipeprof.tools.usage.StepUsage`), matched to tasks by
+task name. A tool reading fills only the metrics the runner left empty. That
+matters on macOS, where Nextflow writes `-` for `%cpu`, `rss`, `rchar` and
+`wchar`, and for the plain TSV source, which has no metrics of its own.
+`pipeprof usage` writes one such line from a tool's output:
+
+```bash
+/usr/bin/time -l bcftools sort -Oz -o c1.sorted.vcf.gz c1.vcf.gz 2> sort_c1.time   # macOS
+pipeprof usage bsd-time sort_c1.time --step "SORT (c1)" >> usage.jsonl
+pipeprof usage gnu-time step.time --step "align (s1)" >> usage.jsonl                   # Linux time -v
+pipeprof usage psrecord step.log --step "call (s1)" >> usage.jsonl
+pipeprof usage seff seff_1234.txt --step "1234" >> usage.jsonl
+```
+
+py-spy speedscope profiles are function-level, not per step: read them with
+`pipeprof.tools.speedscope.parse_speedscope(text).top_functions(10)`.
+
+A worked before-and-after run is in
+[case_study_nextflow_vcf_chain.md](case_study_nextflow_vcf_chain.md).
 
 Output: `analysis.md` and `analysis.json` in `--outdir`, the same pattern as
 `pipeprof report`.
