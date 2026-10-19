@@ -6,7 +6,10 @@ Format: the GNU time info manual (https://www.gnu.org/software/time/, read
 each on its own line and usually indented with a tab; it is written after the
 timed command, so a program's own stderr can appear above it. A command
 killed by a signal gets a "Command terminated by signal N" line, and can get
-the "Exit status" line as well; the signal line wins.
+the "Exit status" line as well; the signal line wins. GNU time writes the
+signal line just above "Command being timed:", so that one line counts as part
+of the report. A program that runs its own ``time -v`` leaves a nested report
+in its stderr; only the last report block is read.
 """
 
 from __future__ import annotations
@@ -41,14 +44,27 @@ def _parse_elapsed(text: str) -> float:
     raise ValueError(f"bad GNU time elapsed value: {text!r}")
 
 
-def parse_gnu_time(text: str, step: str | None = None) -> StepUsage:
-    """Parse one GNU ``/usr/bin/time -v`` report, ignoring any text above it.
-
-    Raises ``ValueError`` if ``text`` has no "Command being timed" line, the
-    one marker every ``-v`` report carries.
-    """
-    if not _COMMAND_RE.search(text):
+def _last_report(text: str) -> str:
+    """Return the last report block, from its signal line if one sits just above it."""
+    commands = list(_COMMAND_RE.finditer(text))
+    if not commands:
         raise ValueError("not a GNU time -v report: no 'Command being timed' line")
+    start = commands[-1].start()
+    above = text[:start].rstrip("\n")
+    previous_line = above[above.rfind("\n") + 1 :]
+    if _SIGNAL_RE.fullmatch(previous_line):
+        start = len(above) - len(previous_line)
+    return text[start:]
+
+
+def parse_gnu_time(text: str, step: str | None = None) -> StepUsage:
+    """Parse the last GNU ``/usr/bin/time -v`` report in ``text``.
+
+    Text above the report, including a nested report from the program's own
+    stderr, is ignored. Raises ``ValueError`` if ``text`` has no "Command being
+    timed" line, the one marker every ``-v`` report carries.
+    """
+    text = _last_report(text)
 
     notes: list[str] = []
 

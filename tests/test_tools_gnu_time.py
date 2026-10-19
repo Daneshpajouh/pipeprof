@@ -50,3 +50,42 @@ def test_signal_wins_over_exit_status_line(data: Path) -> None:
     usage = parse_gnu_time((data / "tools" / "gnu_time_killed_exit_status.txt").read_text())
     assert usage.exit_code == -9
     assert "terminated by signal 9" in usage.notes
+
+
+_NESTED_REPORT = """\
+Command terminated by signal 9
+\tCommand being timed: "inner_tool --big"
+\tUser time (seconds): 9.00
+\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:20.00
+\tExit status: 0
+"""
+
+_OUTER_REPORT = """\
+\tCommand being timed: "run_step.sh"
+\tUser time (seconds): 1.50
+\tSystem time (seconds): 0.25
+\tPercent of CPU this job got: 87%
+\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:02.00
+\tMaximum resident set size (kbytes): 1024
+\tExit status: 0
+"""
+
+
+def test_nested_report_in_program_stderr_is_ignored() -> None:
+    # The program ran its own time -v and a killed child left a signal line in
+    # stderr; the outer report says the step itself exited 0.
+    usage = parse_gnu_time("log line\n" + _NESTED_REPORT + "more log\n" + _OUTER_REPORT)
+    assert usage.exit_code == 0
+    assert not any("signal" in note for note in usage.notes)
+    assert usage.user_s == 1.5
+    assert usage.wall_s == pytest.approx(2.0)
+    assert usage.max_rss_bytes == 1024 * 1024
+
+
+def test_signal_line_just_above_the_last_report_counts() -> None:
+    text = _NESTED_REPORT + "Command terminated by signal 15\n" + _OUTER_REPORT
+    usage = parse_gnu_time(text)
+    assert usage.exit_code == -15
+    assert "terminated by signal 15" in usage.notes
+    assert "exit status line also present: 0" in usage.notes
+    assert usage.user_s == 1.5
