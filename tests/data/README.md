@@ -21,4 +21,8 @@ files were produced by a local run while building this repository.
 | `tools/gnu_time_long.txt` | hand-written, same manual | `h:mm:ss` elapsed, a non-zero exit status |
 | `tools/gnu_time_killed.txt` | hand-written, same manual | the program's own traceback above the report, `Percent of CPU this job got: ?%`, "Command terminated by signal 9" in place of "Exit status" |
 
+| `tools/bsd_time_ok.txt` | real: `/usr/bin/time -l python3 -c "x=bytearray(50_000_000)"` on this Mac (Darwin 27, macOS 26), 2026-10-19 | a clean run, maximum resident set size already in bytes |
+| `tools/bsd_time_failing.txt` | real: `/usr/bin/time -l python3 -c "import sys; sys.exit(1)"` on this Mac, 2026-10-19 | a command that exits 1; `time -l` still prints no exit status at all |
+| `tools/bsd_time_io.txt` | hand-written, same `-l` layout as the real runs above | non-zero block input/output operation counts |
+
 In `snakemake_macos_run/` the repository path is replaced with `REPO`, the data folder with `DATA_DIR` and the macOS temporary folder with `TMPDIR`; nothing else was edited.
