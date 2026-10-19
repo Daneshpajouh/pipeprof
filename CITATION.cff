@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "hpc-job-profiler"
+title: "pipeprof"
 abstract: "Profile bioinformatics jobs before, during and after Slurm submission, with structured logging."
 type: software
 authors:
@@ -9,5 +9,5 @@ authors:
 version: "1.0.1"
 date-released: "2026-10-19"
 license: Apache-2.0
-repository-code: "https://github.com/Daneshpajouh/hpc-job-profiler"
+repository-code: "https://github.com/Daneshpajouh/pipeprof"
 keywords: [slurm, hpc, bioinformatics, profiling, nextflow, snakemake]

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from hpc_job_profiler.records import (
+from pipeprof.records import (
     TaskRecord,
     apply_snakemake_log,
     nextflow_process_name,
@@ -15,9 +15,9 @@ from hpc_job_profiler.records import (
     parse_snakemake_log,
     read_sources,
 )
-from hpc_job_profiler.report import Thresholds, build_report, to_html, to_json, to_markdown
-from hpc_job_profiler.slurm import SlurmError, parse_parsable
-from hpc_job_profiler.units import GIB, MIB
+from pipeprof.report import Thresholds, build_report, to_html, to_json, to_markdown
+from pipeprof.slurm import SlurmError, parse_parsable
+from pipeprof.units import GIB, MIB
 
 
 def by_id(records: list[TaskRecord]) -> dict[str, TaskRecord]:

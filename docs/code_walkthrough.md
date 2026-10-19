@@ -1,6 +1,6 @@
 # Code walk-through
 
-About 2,200 statements in `src/hpc_job_profiler`. Suggested reading order,
+About 2,200 statements in `src/pipeprof`. Suggested reading order,
 with the decisions a reviewer is likely to question.
 
 1. `units.py`. Every time and memory string from Slurm, Nextflow and
@@ -60,5 +60,5 @@ Trade-offs not taken:
 - No database for watch samples: JSON lines can be appended by a process
   that may be killed at any moment, and read with `jq` on a login node.
 - No pandas: the tables are tens to thousands of rows.
-- `hjp report` reads files rather than the Slurm REST API, because `sacct`
+- `pipeprof report` reads files rather than the Slurm REST API, because `sacct`
   output works on every cluster without extra credentials.

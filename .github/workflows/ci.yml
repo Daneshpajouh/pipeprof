@@ -41,7 +41,7 @@ jobs:
             brew install samtools bcftools htslib
           fi
       - run: python -m pip install -e ".[dev]"
-      - run: pytest --cov=hpc_job_profiler --cov-report=term --cov-fail-under=90
+      - run: pytest --cov=pipeprof --cov-report=term --cov-fail-under=90
 
   shell:
     runs-on: ubuntu-latest

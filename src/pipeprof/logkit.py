@@ -5,7 +5,7 @@ already uses ``logging`` can add a JSON lines file without changing its calls.
 
 Example::
 
-    from hpc_job_profiler.logkit import RunLogger
+    from pipeprof.logkit import RunLogger
 
     log = RunLogger("align", jsonl_path="logs/align.jsonl")
     with log.step("bwa_mem", sample="NA12878") as fields:
@@ -32,8 +32,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import IO, Any, TextIO
 
-_FIELDS_ATTR = "hjp_fields"
-_EVENT_ATTR = "hjp_event"
+_FIELDS_ATTR = "pipeprof_fields"
+_EVENT_ATTR = "pipeprof_event"
 
 
 def utc_now_iso() -> str:
@@ -45,10 +45,10 @@ def utc_now_iso() -> str:
 def new_run_id() -> str:
     """Return a sortable, unique run ID such as ``20261019T180102Z-3f2a9c``.
 
-    The ``HJP_RUN_ID`` environment variable, when set, wins, so a pipeline and
+    The ``PIPEPROF_RUN_ID`` environment variable, when set, wins, so a pipeline and
     every tool it calls can share one ID.
     """
-    env_id = os.environ.get("HJP_RUN_ID")
+    env_id = os.environ.get("PIPEPROF_RUN_ID")
     if env_id:
         return env_id
     stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -111,12 +111,12 @@ class RunLogger:
 
     ``jsonl_path`` gets one JSON object per line (parent folders are made);
     ``console`` gets short text lines, or nothing when it is ``None``.
-    ``run_id`` defaults to :func:`new_run_id`, which honours ``HJP_RUN_ID``.
+    ``run_id`` defaults to :func:`new_run_id`, which honours ``PIPEPROF_RUN_ID``.
     """
 
     def __init__(
         self,
-        name: str = "hjp",
+        name: str = "pipeprof",
         jsonl_path: str | Path | None = None,
         run_id: str | None = None,
         console: TextIO | None = sys.stderr,

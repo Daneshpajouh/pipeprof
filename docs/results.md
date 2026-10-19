@@ -7,7 +7,7 @@ htslib 1.23.1, Python 3.13.9. Inputs are listed with SHA-256 in
 [data_sources.md](data_sources.md). These are local runs; a cluster node with
 a shared file system will give different absolute times.
 
-## Held-out validation of `hjp calibrate`
+## Held-out validation of `pipeprof calibrate`
 
 Each calibration was followed by a run on the full input that the fit never
 saw (`--validate-full`). That full run is the held-out test.
@@ -16,19 +16,19 @@ Commands (`DATA_DIR` as filled by `scripts/fetch_data.sh`):
 
 ```bash
 V=$DATA_DIR/clinvar/clinvar.vcf.gz
-B=$DATA_DIR/hpc-job-profiler/bam/NA12878.chr20.lowcov.bam
+B=$DATA_DIR/pipeprof/bam/NA12878.chr20.lowcov.bam
 # A: default fractions 1, 2, 5, 10, 20 percent
-nice -n 10 hjp calibrate $V --outdir clinvar_sort --job-name sort_vcf --validate-full -- \
+nice -n 10 pipeprof calibrate $V --outdir clinvar_sort --job-name sort_vcf --validate-full -- \
   bcftools sort -m 512M -T '{workdir}/sorttmp' -Oz -o '{output}' '{input}'
 # B: wider fractions 5, 10, 20, 30, 50 percent
-nice -n 10 hjp calibrate $V --outdir clinvar_sort_wide --job-name sort_vcf \
+nice -n 10 pipeprof calibrate $V --outdir clinvar_sort_wide --job-name sort_vcf \
   --fractions 0.05,0.1,0.2,0.3,0.5 --validate-full -- \
   bcftools sort -m 512M -T '{workdir}/sorttmp' -Oz -o '{output}' '{input}'
 # C: streaming filter
-nice -n 10 hjp calibrate $V --outdir clinvar_filter --job-name filter_pathogenic --validate-full -- \
+nice -n 10 pipeprof calibrate $V --outdir clinvar_filter --job-name filter_pathogenic --validate-full -- \
   bcftools view -i 'INFO/CLNSIG~"Pathogenic"' -Oz -o '{output}' '{input}'
 # D: BAM sort, 2 threads
-nice -n 10 hjp calibrate $B --outdir bam_sort --job-name sort_bam --threads 2 --validate-full -- \
+nice -n 10 pipeprof calibrate $B --outdir bam_sort --job-name sort_bam --threads 2 --validate-full -- \
   samtools sort -@ '{threads}' -m 512M -T '{workdir}/samsort' -o '{output}' '{input}'
 ```
 
@@ -107,7 +107,7 @@ up as uncertainty.
 
 First, the four calibrated requests against the held-out full runs.
 
-| Run | Request from hjp | Peak RSS used | Memory use | Wall used | Time use | CPU efficiency |
+| Run | Request from pipeprof | Peak RSS used | Memory use | Wall used | Time use | CPU efficiency |
 |---|---|---|---|---|---|---|
 | A sort (1 to 20%) | 1 CPU, 3G, 5 min | 464.7 MiB | 15% | 23.6 s | 8% | 94% |
 | B sort (5 to 50%) | 1 CPU, 2G, 5 min | 465.2 MiB | 23% | 24.1 s | 8% | 92% |
@@ -118,16 +118,16 @@ Wider fractions (B against A) cut the memory request from 3 GiB to 2 GiB for
 the same job. CPU requests matched use: 1 CPU for the single threaded
 bcftools steps, 2 for `samtools sort -@ 2`, and CPU efficiency stayed at 90
 to 96 percent. The time use is low because every request hit the 5-minute
-floor that `hjp` applies to keep requests readable; at cluster scale (hours)
+floor that `pipeprof` applies to keep requests readable; at cluster scale (hours)
 the floor stops mattering.
 
-Second, the example Snakemake workflow before and after `hjp`.
+Second, the example Snakemake workflow before and after `pipeprof`.
 `examples/snakemake_clinvar` first requested 1000 MB and 10 minutes for
 `sort_vcf` (`bcftools sort -m 256M` on one chromosome). The calibrated
-functions from run A were then dropped into `hjp_resources.smk` and the
+functions from run A were then dropped into `pipeprof_resources.smk` and the
 workflow was run again on six chromosomes
 (`snakemake --cores 4 --scheduler greedy --benchmark-extended`, 7.5 s).
-`hjp report` on the two runs' benchmarks and logs:
+`pipeprof report` on the two runs' benchmarks and logs:
 
 ```
 before  | sort_vcf | 6 | 1 | n/a | 953.7M | n/a | 00:10:00 | 00:05:00 |
@@ -140,7 +140,7 @@ CPU on macOS (see the
 [postmortem](operations/postmortem_2026-10-19_snakemake_macos.md)), so the
 report makes no memory recommendation from these rows and says so. To check
 the new 256 MB request, the same command was measured on the largest input,
-chromosome 1 (17,838,151 bytes), with `hjp calibrate --validate-full`:
+chromosome 1 (17,838,151 bytes), with `pipeprof calibrate --validate-full`:
 peak RSS 178.4 MB, wall 2.14 s. The request went from 5.6 times the measured
 peak to 1.43 times, and from 280 times the run time to 140 times (the 5-minute
 floor).
@@ -149,10 +149,10 @@ In the first of the two runs one `stats` job failed inside Snakemake's
 benchmark code; in the second all 18 jobs completed (19 steps with the `all`
 target).
 
-## `hjp watch` on a real run
+## `pipeprof watch` on a real run
 
 ```bash
-hjp watch --out watch_sort.jsonl --interval 1 --mem-limit 512M --cpus 2 --window 10 -- \
+pipeprof watch --out watch_sort.jsonl --interval 1 --mem-limit 512M --cpus 2 --window 10 -- \
   bcftools sort -m 512M -T ./wsort -Oz -o watch_sorted.vcf.gz clinvar.vcf.gz
 ```
 

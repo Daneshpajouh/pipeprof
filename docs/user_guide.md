@@ -3,17 +3,17 @@
 ## Install
 
 ```bash
-pip install hpc-job-profiler      # once published; until then: pip install -e .
-hjp --version
+pip install pipeprof      # once published; until then: pip install -e .
+pipeprof --version
 ```
 
 `calibrate` on BAM or CRAM needs `samtools` on `PATH`; indexed VCF input
 uses `tabix` to index the subsamples (see below).
 
-## Before: `hjp calibrate`
+## Before: `pipeprof calibrate`
 
 ```bash
-hjp calibrate INPUT [options] -- COMMAND ...
+pipeprof calibrate INPUT [options] -- COMMAND ...
 ```
 
 Placeholders in COMMAND: `{input}` (subsample path), `{output}` (scratch
@@ -41,15 +41,15 @@ Subsamples are nested: every record of the 1 percent file is also in the
 Outputs in `--outdir`: `calibration.json` (every run, both fits, the
 cross-validation scores, the plan and provenance), `sbatch_header.sh`,
 `snakemake_resources.smk`, `snakemake_slurm_profile.yaml`,
-`nextflow_resources.config`, `nextflow_directives.nf` and `hjp.log.jsonl`.
+`nextflow_resources.config`, `nextflow_directives.nf` and `pipeprof.log.jsonl`.
 
-## During: `hjp watch` and `hjp tail`
+## During: `pipeprof watch` and `pipeprof tail`
 
 ```bash
-hjp watch --out w.jsonl --interval 5 --mem-limit 8G --cpus 4 -- my_tool args   # start and watch
-hjp watch --out w.jsonl --pid 12345 --mem-limit 8G                              # attach to a process
-hjp watch --out w.jsonl --slurm-job 4242 --interval 30                          # sstat on a login node
-hjp tail w.jsonl            # live view; --once prints and exits
+pipeprof watch --out w.jsonl --interval 5 --mem-limit 8G --cpus 4 -- my_tool args   # start and watch
+pipeprof watch --out w.jsonl --pid 12345 --mem-limit 8G                              # attach to a process
+pipeprof watch --out w.jsonl --slurm-job 4242 --interval 30                          # sstat on a login node
+pipeprof tail w.jsonl            # live view; --once prints and exits
 ```
 
 For a Slurm job the memory limit and CPU count come from `sacct` unless
@@ -59,15 +59,15 @@ or I/O progress for `--stall` seconds; on macOS only CPU, since psutil has no
 per process I/O counters there). Each alert is written when it starts and
 when it clears.
 
-## After: `hjp report`
+## After: `pipeprof report`
 
 ```bash
-hjp report --show-sacct                       # the sacct command to run
+pipeprof report --show-sacct                       # the sacct command to run
 sacct --parsable2 --format=JobID,JobIDRaw,JobName,Partition,State,ExitCode,Submit,Start,End,Elapsed,Timelimit,AllocCPUS,NNodes,ReqMem,TotalCPU,MaxRSS,NodeList --starttime=2026-10-01 > sacct.txt
-hjp report --sacct sacct.txt --outdir report
-hjp report --from-slurm 4242,4243 --outdir report        # calls sacct itself
-hjp report --nextflow-trace results/pipeline_info/trace.txt --outdir report
-hjp report --snakemake-benchmarks benchmarks/ --snakemake-log .snakemake/log/LATEST.snakemake.log
+pipeprof report --sacct sacct.txt --outdir report
+pipeprof report --from-slurm 4242,4243 --outdir report        # calls sacct itself
+pipeprof report --nextflow-trace results/pipeline_info/trace.txt --outdir report
+pipeprof report --snakemake-benchmarks benchmarks/ --snakemake-log .snakemake/log/LATEST.snakemake.log
 ```
 
 Definitions:
@@ -94,17 +94,17 @@ its measurement. The report says so instead of guessing.
 
 Failure classes: OUT_OF_MEMORY, TIMEOUT, NODE_FAIL, FAILED, CANCELLED,
 PREEMPTED and BOOT_FAIL from sacct. Nextflow only reports FAILED with an exit
-status; `hjp` marks a failure as out of memory only for exit 137 with peak RSS
+status; `pipeprof` marks a failure as out of memory only for exit 137 with peak RSS
 at 90% or more of the request, and as a timeout for exit 137, 140 or 143 at 95%
 or more of the time limit. Both are labelled "(inferred)".
 
 ## Logging library
 
 ```python
-from hpc_job_profiler.logkit import RunLogger, read_jsonl, step_durations
-from hpc_job_profiler.provenance import capture
+from pipeprof.logkit import RunLogger, read_jsonl, step_durations
+from pipeprof.provenance import capture
 
-log = RunLogger("align", jsonl_path="logs/align.jsonl")       # HJP_RUN_ID shares an ID
+log = RunLogger("align", jsonl_path="logs/align.jsonl")  # PIPEPROF_RUN_ID shares an ID
 log.event("provenance", **capture(inputs=["reads.fq.gz"]).to_dict())
 with log.step("bwa_mem", sample="S1") as fields:
     ...

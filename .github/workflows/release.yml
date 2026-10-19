@@ -1,6 +1,6 @@
 # Publishes to PyPI with trusted publishing (no API token stored in GitHub).
 # One-time setup on pypi.org and test.pypi.org: add a trusted publisher for
-# owner Daneshpajouh, repository hpc-job-profiler, workflow release.yml and
+# owner Daneshpajouh, repository pipeprof, workflow release.yml and
 # the environment named below.
 name: release
 
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/hpc-job-profiler
+      url: https://test.pypi.org/p/pipeprof
     permissions:
       id-token: write
     steps:
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/hpc-job-profiler
+      url: https://pypi.org/p/pipeprof
     permissions:
       id-token: write
     steps:
@@ -71,11 +71,11 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Build and push ghcr.io/daneshpajouh/hpc-job-profiler
+      - name: Build and push ghcr.io/daneshpajouh/pipeprof
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          image="ghcr.io/daneshpajouh/hpc-job-profiler"
+          image="ghcr.io/daneshpajouh/pipeprof"
           echo "${GH_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
           docker build -t "${image}:${GITHUB_REF_NAME#v}" -t "${image}:latest" .
           docker run --rm "${image}:${GITHUB_REF_NAME#v}" --version

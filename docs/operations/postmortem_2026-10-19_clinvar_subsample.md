@@ -1,12 +1,12 @@
 # Postmortem: calibration failed on the first ClinVar subsample
 
 - Date: 2026-10-19, 11:39:48 to 11:41:04 Pacific
-- Impact: the first real `hjp calibrate` run stopped after 8 seconds
-- Detected by: `hjp calibrate` exit status 2 and the error in its log
+- Impact: the first real `pipeprof calibrate` run stopped after 8 seconds
+- Detected by: `pipeprof calibrate` exit status 2 and the error in its log
 
 ## What happened
 
-`hjp calibrate clinvar.vcf.gz -- bcftools sort ...` made five subsamples and
+`pipeprof calibrate clinvar.vcf.gz -- bcftools sort ...` made five subsamples and
 ran the first one. `bcftools sort` exited with status 255:
 
 ```

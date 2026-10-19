@@ -3,7 +3,7 @@ requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hpc-job-profiler"
+name = "pipeprof"
 version = "1.0.1"
 description = "Profile bioinformatics jobs before, during and after Slurm submission, with structured logging."
 readme = "README.md"
@@ -43,14 +43,14 @@ dev = [
 docs = ["mkdocs>=1.6", "mkdocs-material>=9.5"]
 
 [project.scripts]
-hjp = "hpc_job_profiler.cli:main"
+pipeprof = "pipeprof.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/Daneshpajouh/hpc-job-profiler"
-Documentation = "https://github.com/Daneshpajouh/hpc-job-profiler/tree/main/docs"
+Homepage = "https://github.com/Daneshpajouh/pipeprof"
+Documentation = "https://github.com/Daneshpajouh/pipeprof/tree/main/docs"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/hpc_job_profiler"]
+packages = ["src/pipeprof"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "docs", "README.md", "CHANGELOG.md", "LICENSE", "CITATION.cff"]
@@ -80,12 +80,12 @@ disallow_untyped_decorators = false
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 markers = [
-    "realdata: runs real tools on public data under HJP_DATA_DIR (skipped unless set)",
-    "docker: needs a running Docker daemon and the pinned Slurm image (skipped unless HJP_DOCKER_SLURM=1)",
+    "realdata: runs real tools on public data under PIPEPROF_DATA_DIR (skipped unless set)",
+    "docker: needs a running Docker daemon and the pinned Slurm image (skipped unless PIPEPROF_DOCKER_SLURM=1)",
 ]
 
 [tool.coverage.run]
-source = ["hpc_job_profiler"]
+source = ["pipeprof"]
 branch = true
 
 [tool.coverage.report]

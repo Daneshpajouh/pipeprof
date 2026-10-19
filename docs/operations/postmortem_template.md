@@ -19,7 +19,7 @@ Change made, with commit or job IDs.
 
 ## Detection
 
-Could `hjp watch`, `hjp report` or a test have caught it earlier? If not,
+Could `pipeprof watch`, `pipeprof report` or a test have caught it earlier? If not,
 what would?
 
 ## Follow-up

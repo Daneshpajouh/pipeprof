@@ -1,4 +1,4 @@
-# Written by hjp calibrate on 2026-10-19 from the full ClinVar sort (docs/results.md, run A).
+# Written by pipeprof calibrate on 2026-10-19 from the full ClinVar sort (docs/results.md, run A).
 import math
 
 def sort_vcf_mem_mb(wildcards, input, attempt):

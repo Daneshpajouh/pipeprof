@@ -2,7 +2,7 @@
 
 | Source | Format read | Reference checked |
 |---|---|---|
-| `sacct` | `--parsable2` (pipe separated, no trailing pipe) with a header line; columns from `hjp report --show-sacct` or any subset that includes `JobID` | [sacct manual, Slurm 26.05](https://slurm.schedmd.com/sacct.html), read 2026-10-19 |
+| `sacct` | `--parsable2` (pipe separated, no trailing pipe) with a header line; columns from `pipeprof report --show-sacct` or any subset that includes `JobID` | [sacct manual, Slurm 26.05](https://slurm.schedmd.com/sacct.html), read 2026-10-19 |
 | `sacct` ReqMem, Slurm 20.11 and older | `4000Mc` (per CPU), `16000Mn` (per node), bare numbers in MB, also shown on steps | [sacct.1 at tag slurm-20-11-9-1](https://raw.githubusercontent.com/SchedMD/slurm/slurm-20-11-9-1/doc/man/man1/sacct.1): "A 'c' at the end of number represents Memory Per CPU" |
 | `sacct` ReqMem, Slurm 21.08 and newer | whole-job memory with a unit letter, allocation line only | [21.08 release notes](https://raw.githubusercontent.com/SchedMD/slurm/slurm-21-08-8-2/RELEASE_NOTES) |
 | `sstat` | `--parsable2 --noheader --allsteps --format=JobID,NTasks,AveCPU,AveRSS,MaxRSS,MaxDiskRead,MaxDiskWrite` | [sstat manual, Slurm 26.05](https://slurm.schedmd.com/sstat.html) |

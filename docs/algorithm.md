@@ -1,6 +1,6 @@
 # Scaling fit and its validation
 
-Code: `src/hpc_job_profiler/fit.py`, `calibrate.py`, `emit.py`.
+Code: `src/pipeprof/fit.py`, `calibrate.py`, `emit.py`.
 
 ## Measurements
 

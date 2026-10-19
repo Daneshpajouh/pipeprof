@@ -26,5 +26,5 @@ examples/*/results/
 examples/*/benchmarks/
 examples/*/logs/
 examples/*/.snakemake/
-examples/*/hjp_report/
+examples/*/pipeprof_report/
 .hypothesis/

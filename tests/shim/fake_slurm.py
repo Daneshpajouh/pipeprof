@@ -2,8 +2,8 @@
 """Stand-in for sacct and sstat in integration tests.
 
 It replays fixture text and simulates one running job (ID 4242) whose memory
-grows on every sstat call until HJP_SHIM_STEPS calls have been answered, after
-which the job counts as COMPLETED. State lives in HJP_SHIM_STATE.
+grows on every sstat call until PIPEPROF_SHIM_STEPS calls have been answered, after
+which the job counts as COMPLETED. State lives in PIPEPROF_SHIM_STATE.
 """
 
 import os
@@ -14,13 +14,13 @@ FIXTURES = Path(__file__).resolve().parent.parent / "data"
 
 
 def calls() -> int:
-    state = Path(os.environ["HJP_SHIM_STATE"])
+    state = Path(os.environ["PIPEPROF_SHIM_STATE"])
     count = int(state.read_text()) if state.exists() else 0
     return count
 
 
 def bump() -> int:
-    state = Path(os.environ["HJP_SHIM_STATE"])
+    state = Path(os.environ["PIPEPROF_SHIM_STATE"])
     count = calls() + 1
     state.write_text(str(count))
     return count
@@ -29,7 +29,7 @@ def bump() -> int:
 def main() -> int:
     tool = Path(sys.argv[0]).name
     args = sys.argv[1:]
-    limit = int(os.environ.get("HJP_SHIM_STEPS", "4"))
+    limit = int(os.environ.get("PIPEPROF_SHIM_STEPS", "4"))
     jobs = next((a.split("=", 1)[1] for a in args if a.startswith("--jobs=")), "")
     if tool == "sstat":
         if jobs != "4242":

@@ -178,7 +178,7 @@ def run_measured(
 
     ``command`` is a list of arguments, or a string when ``shell`` is true
     (then ``/bin/sh -c`` runs it, which allows pipes). ``on_sample`` is called
-    from the sampling thread for each sample, which ``hjp watch`` uses.
+    from the sampling thread for each sample, which ``pipeprof watch`` uses.
     """
     if shell:
         text = command if isinstance(command, str) else " ".join(command)
@@ -215,7 +215,7 @@ def run_measured(
                     on_sample(sample)
             stop.wait(interval)
 
-    thread = threading.Thread(target=loop, name="hjp-sampler", daemon=True)
+    thread = threading.Thread(target=loop, name="pipeprof-sampler", daemon=True)
     thread.start()
     try:
         _, status, usage = os.wait4(proc.pid, 0)

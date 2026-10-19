@@ -9,9 +9,9 @@ import pytest
 from rich.console import Console
 from typer.testing import CliRunner
 
-from hpc_job_profiler.cli import app
-from hpc_job_profiler.tail import render, sparkline, tail
-from hpc_job_profiler.watch import (
+from pipeprof.cli import app
+from pipeprof.tail import render, sparkline, tail
+from pipeprof.watch import (
     AlertConfig,
     AlertEngine,
     JsonlSink,
@@ -85,7 +85,7 @@ def test_tail_render(tmp_path: Path) -> None:
 
 
 def test_cli_version_and_provenance(tmp_path: Path) -> None:
-    assert runner.invoke(app, ["--version"]).output.startswith("hjp ")
+    assert runner.invoke(app, ["--version"]).output.startswith("pipeprof ")
     f = tmp_path / "a.txt"
     f.write_text("abc")
     result = runner.invoke(app, ["provenance", str(f)])
@@ -114,7 +114,7 @@ def test_cli_calibrate(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0, result.output
     assert (out / "calibration.json").exists() and (out / "sbatch_header.sh").exists()
-    assert (out / "hjp.log.jsonl").exists()
+    assert (out / "pipeprof.log.jsonl").exists()
     bad = runner.invoke(app, ["calibrate", str(vcf), "--outdir", str(out), "--", "false"])
     assert bad.exit_code == 2
     worse = runner.invoke(
@@ -197,7 +197,7 @@ def test_cli_watch_modes(tmp_path: Path, slurm_shim: Path) -> None:
     assert runner.invoke(app, ["tail", str(out), "--once"]).exit_code == 0
     assert (
         runner.invoke(
-            app, ["report", "--from-slurm", "1"], env={"HJP_SACCT": "/nonexistent/sacct"}
+            app, ["report", "--from-slurm", "1"], env={"PIPEPROF_SACCT": "/nonexistent/sacct"}
         ).exit_code
         == 2
     )
@@ -206,7 +206,7 @@ def test_cli_watch_modes(tmp_path: Path, slurm_shim: Path) -> None:
 def test_run_id_links_calibrate_watch_and_report(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("HJP_RUN_ID", "job-42")
+    monkeypatch.setenv("PIPEPROF_RUN_ID", "job-42")
     vcf = write_vcf(tmp_path / "in.vcf", 2000)
     cal = runner.invoke(
         app,
@@ -258,7 +258,7 @@ def test_run_id_links_calibrate_watch_and_report(
 
 
 def test_watch_log_without_samples_gives_no_record() -> None:
-    from hpc_job_profiler.records import parse_watch_log
+    from pipeprof.records import parse_watch_log
 
     assert parse_watch_log([{"type": "start"}]) == []
     rec = parse_watch_log(

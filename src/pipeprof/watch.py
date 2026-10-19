@@ -23,9 +23,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any
 
-from hpc_job_profiler.logkit import new_run_id, utc_now_iso
-from hpc_job_profiler.measure import TreeSample, TreeSampler
-from hpc_job_profiler.slurm import TERMINAL_STATES, query_limits, query_sstat
+from pipeprof.logkit import new_run_id, utc_now_iso
+from pipeprof.measure import TreeSample, TreeSampler
+from pipeprof.slurm import TERMINAL_STATES, query_limits, query_sstat
 
 
 @dataclass
@@ -131,7 +131,7 @@ class JsonlSink:
         self.run_id = run_id or new_run_id()
 
     def write(self, record: dict[str, Any]) -> None:
-        # Flush every line so `hjp tail` sees it at once.
+        # Flush every line so `pipeprof tail` sees it at once.
         self.handle.write(json.dumps({"run_id": self.run_id, **record}) + "\n")
         self.handle.flush()
 

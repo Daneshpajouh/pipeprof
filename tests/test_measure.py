@@ -4,7 +4,7 @@ import sys
 
 import pytest
 
-from hpc_job_profiler.measure import CommandFailedError, TreeSampler, maxrss_to_bytes, run_measured
+from pipeprof.measure import CommandFailedError, TreeSampler, maxrss_to_bytes, run_measured
 
 PY = sys.executable
 ALLOC = (

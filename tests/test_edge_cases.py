@@ -8,15 +8,15 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from hpc_job_profiler.fit import ModelKind, fit_linear, fit_power, select_model
-from hpc_job_profiler.records import (
+from pipeprof.fit import ModelKind, fit_linear, fit_power, select_model
+from pipeprof.records import (
     parse_nextflow_trace,
     parse_sacct,
     parse_snakemake_benchmark,
     read_sources,
 )
-from hpc_job_profiler.slurm import SlurmError
-from hpc_job_profiler.units import (
+from pipeprof.slurm import SlurmError
+from pipeprof.units import (
     GIB,
     MIB,
     format_memory,

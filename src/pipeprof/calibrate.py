@@ -4,7 +4,7 @@ The command is a template. ``{input}`` is replaced by each subsample path,
 ``{output}`` by a scratch output path, ``{threads}`` by the thread count and
 ``{workdir}`` by the scratch folder. For example::
 
-    hjp calibrate clinvar.vcf.gz -- bcftools sort -Oz -o {output} {input}
+    pipeprof calibrate clinvar.vcf.gz -- bcftools sort -Oz -o {output} {input}
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from hpc_job_profiler.emit import (
+from pipeprof.emit import (
     ResourcePlan,
     make_plan,
     nextflow_config,
@@ -27,17 +27,17 @@ from hpc_job_profiler.emit import (
     snakemake_profile,
     snakemake_rule,
 )
-from hpc_job_profiler.fit import Selection, select_model
-from hpc_job_profiler.logkit import RunLogger
-from hpc_job_profiler.measure import Measurement, run_measured
-from hpc_job_profiler.provenance import capture
-from hpc_job_profiler.subsample import (
+from pipeprof.fit import Selection, select_model
+from pipeprof.logkit import RunLogger
+from pipeprof.measure import Measurement, run_measured
+from pipeprof.provenance import capture
+from pipeprof.subsample import (
     FullInput,
     InputKind,
     make_subsamples,
     remove_subsamples,
 )
-from hpc_job_profiler.units import format_memory
+from pipeprof.units import format_memory
 
 DEFAULT_FRACTIONS = (0.01, 0.02, 0.05, 0.1, 0.2)
 METRICS = ("wall_s", "cpu_s", "peak_rss_bytes")
@@ -98,7 +98,7 @@ class Prediction:
 
 @dataclass
 class CalibrationResult:
-    """Everything ``hjp calibrate`` produces."""
+    """Everything ``pipeprof calibrate`` produces."""
 
     command_template: list[str]
     shell: bool
@@ -269,7 +269,7 @@ def calibrate(
         raise CalibrationError("x_variable must be 'bytes' or 'records'")
     if repeats < 1:
         raise CalibrationError("repeats must be at least 1")
-    log = logger or RunLogger("hjp.calibrate", console=None)
+    log = logger or RunLogger("pipeprof.calibrate", console=None)
     source = Path(input_path).resolve()
     work = Path(workdir).resolve()
     work.mkdir(parents=True, exist_ok=True)
@@ -374,7 +374,8 @@ def calibrate(
     wall_sel = predictions["wall_s"].selection.chosen
     stamp = time.strftime("%Y-%m-%d %H:%M %Z")
     note = (
-        f"hjp calibrate {stamp}: {len(points)} runs on {len(subs)} subsamples of {source.name}\n"
+        f"pipeprof calibrate {stamp}: {len(points)} runs on "
+        f"{len(subs)} subsamples of {source.name}\n"
         f"predicted peak RSS {format_memory(plan.predicted_peak_rss_bytes)} "
         f"(95% upper {format_memory(plan.predicted_peak_rss_upper_bytes)}), "
         f"wall {plan.predicted_wall_s:.1f} s (95% upper {plan.predicted_wall_upper_s:.1f} s)"

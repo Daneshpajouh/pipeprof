@@ -11,8 +11,8 @@ from rich.live import Live
 from rich.table import Table
 from rich.text import Text
 
-from hpc_job_profiler.units import format_memory
-from hpc_job_profiler.watch import read_watch_log
+from pipeprof.units import format_memory
+from pipeprof.watch import read_watch_log
 
 _BARS = " ▁▂▃▄▅▆▇█"
 
@@ -29,7 +29,7 @@ def sparkline(values: list[float], width: int = 40) -> str:
 def render(records: list[dict[str, Any]]) -> Group:
     samples = [r for r in records if r.get("type") == "sample"]
     alerts = [r for r in records if r.get("type") == "alert"]
-    table = Table(title="hjp watch", show_header=True)
+    table = Table(title="pipeprof watch", show_header=True)
     for column in ("elapsed", "RSS", "peak RSS", "CPU s", "procs/steps"):
         table.add_column(column)
     if samples:

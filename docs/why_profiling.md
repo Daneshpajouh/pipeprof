@@ -19,7 +19,7 @@ Two things go wrong when the booking is a guess:
    the scheduler has to find a gap big enough. Over hundreds of samples, the
    waste adds up to days of computer time.
 
-`hjp` replaces the guess with a short test. It runs the job on small slices of
+`pipeprof` replaces the guess with a short test. It runs the job on small slices of
 the real data (1 to 20 percent), measures how time and memory grow as the
 slice grows, and predicts what the full job will need, with a margin. After
 the job, it compares what was booked with what was used and suggests a better

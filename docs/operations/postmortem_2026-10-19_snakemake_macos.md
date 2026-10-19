@@ -39,15 +39,15 @@ the rest were swallowed and written as `NA`.
 ## Fix
 
 - The example README runs Snakemake with `--scheduler greedy`.
-- `hjp report` treats `NA` as missing, says "no peak RSS recorded" and makes
+- `pipeprof report` treats `NA` as missing, says "no peak RSS recorded" and makes
   no memory recommendation from those rows. This is tested with the real
   files from this run (`tests/data/snakemake_macos_run/`).
-- `hjp`'s own sampler uses `memory_info` (RSS), which worked for the same
-  processes; `hjp calibrate` and `hjp watch` gave memory numbers on this Mac.
+- `pipeprof`'s own sampler uses `memory_info` (RSS), which worked for the same
+  processes; `pipeprof calibrate` and `pipeprof watch` gave memory numbers on this Mac.
 
 ## Detection
 
-`hjp watch --pid <snakemake pid> --stall 120` would have raised `stalled`
+`pipeprof watch --pid <snakemake pid> --stall 120` would have raised `stalled`
 after 2 minutes instead of 10. The missing memory is now visible in every
 report instead of silently producing a time-only recommendation.
 

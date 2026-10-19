@@ -1,6 +1,6 @@
 # Stages: build (wheel), test (runs the suite on Linux), runtime (default, CLI only).
-#   docker build -t hjp .                      # runtime image
-#   docker build --target test -t hjp-test . && docker run --rm hjp-test
+#   docker build -t pipeprof .                      # runtime image
+#   docker build --target test -t pipeprof-test . && docker run --rm pipeprof-test
 ARG PYTHON_IMAGE=python:3.13-slim@sha256:70729b46c69b4f1e97c4822c1af3df53a1476cf5ddc6c087c0c10bc3a5678c2f
 
 FROM ${PYTHON_IMAGE} AS build
@@ -16,13 +16,13 @@ RUN apt-get update \
 WORKDIR /src
 COPY . .
 RUN pip install --no-cache-dir -e ".[dev]"
-CMD ["pytest", "-q", "-p", "no:cacheprovider", "--cov=hpc_job_profiler", "--cov-report=term"]
+CMD ["pytest", "-q", "-p", "no:cacheprovider", "--cov=pipeprof", "--cov-report=term"]
 
 FROM ${PYTHON_IMAGE} AS runtime
 COPY --from=build /dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl \
-    && useradd --create-home hjp
-USER hjp
-WORKDIR /home/hjp
-ENTRYPOINT ["hjp"]
+    && useradd --create-home pipeprof
+USER pipeprof
+WORKDIR /home/pipeprof
+ENTRYPOINT ["pipeprof"]
 CMD ["--help"]

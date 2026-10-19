@@ -1,14 +1,14 @@
 # Logging: one run ID from sizing to review
 
-Every `hjp` command writes JSON lines. `HJP_RUN_ID` sets the run ID for all of
+Every `pipeprof` command writes JSON lines. `PIPEPROF_RUN_ID` sets the run ID for all of
 them, so the calibration, the live samples and the review of one job can be
 joined on that field. Without it, each command makes its own ID
 (`20261019T190226Z-3f2a9c`: UTC time plus six random hex digits).
 
 | Stage | File | Records |
 |---|---|---|
-| before | `OUTDIR/hjp.log.jsonl`, `OUTDIR/calibration.json` | `step_start` and `step_end` per subsample, measurement, fit; the manifest in `calibration.json` has the input path, size and SHA-256, tool versions, git commit, host, allow listed environment |
-| during | the `--out` file of `hjp watch` | one `start` record (limits and alert thresholds), `sample` records, `alert` records (started, cleared), one `end` record |
+| before | `OUTDIR/pipeprof.log.jsonl`, `OUTDIR/calibration.json` | `step_start` and `step_end` per subsample, measurement, fit; the manifest in `calibration.json` has the input path, size and SHA-256, tool versions, git commit, host, allow listed environment |
+| during | the `--out` file of `pipeprof watch` | one `start` record (limits and alert thresholds), `sample` records, `alert` records (started, cleared), one `end` record |
 | after | `report.json`, `report.md`, `report.html` | per task efficiency and flags, recommendations, failures, totals |
 
 ## A real run
@@ -16,22 +16,22 @@ joined on that field. Without it, each command makes its own ID
 ClinVar filter on the local machine, 2026-10-19 12:02 Pacific:
 
 ```bash
-export HJP_RUN_ID=clinvar-filter-20261019
+export PIPEPROF_RUN_ID=clinvar-filter-20261019
 V=clinvar.vcf.gz
-hjp calibrate $V --outdir before --job-name filter_pathogenic -- \
+pipeprof calibrate $V --outdir before --job-name filter_pathogenic -- \
   bcftools view -i 'INFO/CLNSIG~"Pathogenic"' -Oz -o '{output}' '{input}'
 # Request: --cpus-per-task=1 --mem=256M --time=00:05:00
-hjp watch --out during.jsonl --interval 1 --mem-limit 256M --cpus 1 -- \
+pipeprof watch --out during.jsonl --interval 1 --mem-limit 256M --cpus 1 -- \
   bcftools view -i 'INFO/CLNSIG~"Pathogenic"' -Oz -o pathogenic.vcf.gz $V
 # 20 samples written to during.jsonl
-hjp report --watch-log during.jsonl --outdir after
+pipeprof report --watch-log during.jsonl --outdir after
 ```
 
-`before/hjp.log.jsonl` (first lines, cut at the right):
+`before/pipeprof.log.jsonl` (first lines, cut at the right):
 
 ```json
-{"ts": "2026-10-19T19:02:26.209Z", "level": "INFO", "logger": "hjp.calibrate", "run_id": "clinvar-filter-20261019", "event": "step_start", "msg": "start subsample", "step": "subsample", "input": ".../clinvar.vcf.gz", "fractions": [0.01, 0.02, 0.05, 0.1, 0.2]}
-{"ts": "2026-10-19T19:02:33.147Z", "level": "INFO", "logger": "hjp.calibrate", "run_id": "clinvar-filter-20261019", "event": "step_end", "msg": "done subsample", "records_full": 4594764, "bytes_full": 200437060, ...
+{"ts": "2026-10-19T19:02:26.209Z", "level": "INFO", "logger": "pipeprof.calibrate", "run_id": "clinvar-filter-20261019", "event": "step_start", "msg": "start subsample", "step": "subsample", "input": ".../clinvar.vcf.gz", "fractions": [0.01, 0.02, 0.05, 0.1, 0.2]}
+{"ts": "2026-10-19T19:02:33.147Z", "level": "INFO", "logger": "pipeprof.calibrate", "run_id": "clinvar-filter-20261019", "event": "step_end", "msg": "done subsample", "records_full": 4594764, "bytes_full": 200437060, ...
 ```
 
 `before/calibration.json`, provenance of the input:
@@ -63,14 +63,14 @@ Core hours allocated 0.006, used 0.005.
 - bcftools: memory: max peak RSS 16.7M over 1 completed tasks x 1.2; time: max elapsed 00:00:24 over 1 completed tasks x 1.5; cpus: busiest task kept 0.84 cores busy on average
 ```
 
-The 256M request stays because 256 MiB is the smallest step `hjp` rounds to.
+The 256M request stays because 256 MiB is the smallest step `pipeprof` rounds to.
 
 ## Using the library in a pipeline
 
 ```python
 import os
-from hpc_job_profiler.logkit import RunLogger
-from hpc_job_profiler.provenance import capture
+from pipeprof.logkit import RunLogger
+from pipeprof.provenance import capture
 
 log = RunLogger("annotate", jsonl_path=f"logs/annotate_{os.environ['SLURM_JOB_ID']}.jsonl")
 log.event("provenance", **capture(inputs=["calls.vcf.gz"]).to_dict())

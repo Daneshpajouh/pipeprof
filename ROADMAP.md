@@ -23,7 +23,7 @@ is needed.
 5. Index BAM subsamples when the input has a `.bai`, for tools that need
    region queries (same failure class as the ClinVar postmortem).
 6. Nextflow example. A small real pipeline run with `-with-trace` (default
-   fields) feeding `hjp report`, and a check that the emitted
+   fields) feeding `pipeprof report`, and a check that the emitted
    `nextflow_directives.nf` closures parse in Nextflow.
 7. conda-forge. Submit `recipe/meta.yaml` to staged-recipes after the
    first PyPI release.

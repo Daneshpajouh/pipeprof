@@ -22,11 +22,11 @@ from typing import Any
 
 import psutil
 
-from hpc_job_profiler import __version__
-from hpc_job_profiler.logkit import utc_now_iso
+from pipeprof import __version__
+from pipeprof.logkit import utc_now_iso
 
 #: Environment variables that are safe and useful to record.
-ENV_ALLOW_PREFIXES = ("SLURM_", "SBATCH_", "PBS_", "NXF_", "SNAKEMAKE_", "HJP_")
+ENV_ALLOW_PREFIXES = ("SLURM_", "SBATCH_", "PBS_", "NXF_", "SNAKEMAKE_", "PIPEPROF_")
 ENV_ALLOW_NAMES = (
     "CONDA_DEFAULT_ENV",
     "CONDA_PREFIX",
@@ -60,7 +60,7 @@ class Provenance:
     """Everything needed to say where and how a result was produced."""
 
     captured_at: str
-    hjp_version: str
+    pipeprof_version: str
     hostname: str
     platform: dict[str, str]
     python: str
@@ -177,7 +177,7 @@ def capture(
     uname = platform.uname()
     return Provenance(
         captured_at=utc_now_iso(),
-        hjp_version=__version__,
+        pipeprof_version=__version__,
         hostname=socket.gethostname(),
         platform={
             "system": uname.system,

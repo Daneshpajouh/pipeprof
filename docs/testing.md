@@ -11,13 +11,13 @@ on macOS and in the `python:3.13-slim` Linux container.
 | Process measurement | real child processes: a 120 MiB allocation, two concurrent children (tree peak above `ru_maxrss`), exit codes | `pytest tests/test_measure.py` |
 | Integration | subsampling with real bgzip, tabix and samtools; calibrate end to end; CLI; `watch` and `report --from-slurm` against a fake `sacct`/`sstat` (`tests/shim/fake_slurm.py`) | `pytest tests/test_subsample_calibrate.py tests/test_watch_cli.py` |
 | Shell | `scripts/fetch_data.sh` offline: reuse of present files, MD5 mismatch stops the script | `bats tests/shell/fetch_data.bats` and `shellcheck scripts/*.sh` |
-| Linux container | the whole suite on Debian with apt's samtools 1.21 | `docker build --target test -t hjp-test . && docker run --rm hjp-test` |
+| Linux container | the whole suite on Debian with apt's samtools 1.21 | `docker build --target test -t pipeprof-test . && docker run --rm pipeprof-test` |
 | Real data | the four held-out calibrations in [results.md](results.md) | commands in results.md |
 
 Results of the last run of each (v1.0.1, 2026-10-19 12:48 Pacific):
 
 ```
-$ pytest --cov=hpc_job_profiler      # macOS, Python 3.13.9
+$ pytest --cov=pipeprof      # macOS, Python 3.13.9
 119 passed; TOTAL 2218 statements, 97% coverage (branch coverage on)
 $ git clone . c && docker build --target test -t t c && docker run --rm t   # Debian, Python 3.13.16, git 2.47.3
 119 passed in 9.46s; TOTAL 97%
@@ -47,11 +47,11 @@ each `sstat` call until it completes.
 One real Slurm was also used, by hand: the `xenonmiddleware/slurm:20` image
 (`sha256:20d4481829c7859e7d2a3fb50b7296394948c2e6cad7516493c83c72dd27ff0a`,
 Slurm 20.02.0, amd64 under emulation on the Mac). The exact `sstat` and
-`sacct` calls that `hjp watch --slurm-job` makes ran without error there
+`sacct` calls that `pipeprof watch --slurm-job` makes ran without error there
 (`--allsteps` is accepted; `MaxDiskRead` came back as a bare byte count,
 `6825`). Its `sacct` output after five test jobs is in `tests/data` and showed
 that this accounting setup (`filetxt`) records 0 CPUs and 0 CPU time. Before
-that file was added, `hjp report` recommended 1 CPU from "0.00 cores busy";
-it now treats 0 allocated CPUs as not recorded. `hjp` itself was not run
+that file was added, `pipeprof report` recommended 1 CPU from "0.00 cores busy";
+it now treats 0 allocated CPUs as not recorded. `pipeprof` itself was not run
 inside that container (its Python is too old), so `watch --slurm-job` has
 not been run end to end against a real `sstat` stream.

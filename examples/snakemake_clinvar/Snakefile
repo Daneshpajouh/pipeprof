@@ -1,8 +1,8 @@
-# Small real workflow used to demonstrate hjp on Snakemake output.
+# Small real workflow used to demonstrate pipeprof on Snakemake output.
 #
 # For each chromosome it extracts the ClinVar records with an indexed region
 # fetch, sorts them, and computes bcftools stats. Every rule writes a
-# benchmark file, which `hjp report --snakemake-benchmarks` reads afterwards.
+# benchmark file, which `pipeprof report --snakemake-benchmarks` reads afterwards.
 #
 # Run from this folder:
 #   snakemake --cores 4 --scheduler greedy --config clinvar_vcf=/path/to/clinvar.vcf.gz
@@ -13,7 +13,7 @@ CHROMS = config["chromosomes"]
 VCF = config["clinvar_vcf"]
 
 
-include: "hjp_resources.smk"
+include: "pipeprof_resources.smk"
 
 
 rule all:

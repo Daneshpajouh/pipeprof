@@ -3,10 +3,10 @@
 Formats follow the Slurm manual pages (https://slurm.schedmd.com/sacct.html
 and https://slurm.schedmd.com/sstat.html, version 26.05 read on 2026-10-19):
 ``--parsable2`` separates fields with ``|`` and has no trailing ``|``. The
-first line is a header unless ``--noheader`` is given. ``hjp`` always asks for
+first line is a header unless ``--noheader`` is given. ``pipeprof`` always asks for
 an explicit ``--format`` so the column order is known.
 
-The binaries can be replaced with ``HJP_SACCT`` and ``HJP_SSTAT``, which the
+The binaries can be replaced with ``PIPEPROF_SACCT`` and ``PIPEPROF_SSTAT``, which the
 tests use to point at a shim that replays recorded output.
 """
 
@@ -19,7 +19,7 @@ import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from hpc_job_profiler.units import parse_memory, parse_reqmem, parse_slurm_duration
+from pipeprof.units import parse_memory, parse_reqmem, parse_slurm_duration
 
 SACCT_FIELDS = (
     "JobID",
@@ -70,7 +70,7 @@ class SlurmError(RuntimeError):
 
 
 def sacct_command(jobs: Sequence[str] = (), start: str | None = None) -> list[str]:
-    """The sacct call ``hjp report`` expects, also printed by ``hjp report --show-sacct``."""
+    """The sacct call that ``pipeprof report`` expects; ``--show-sacct`` prints it."""
     cmd = [binary("sacct"), "--parsable2", f"--format={','.join(SACCT_FIELDS)}"]
     if jobs:
         cmd.append(f"--jobs={','.join(jobs)}")
@@ -80,8 +80,8 @@ def sacct_command(jobs: Sequence[str] = (), start: str | None = None) -> list[st
 
 
 def binary(name: str) -> str:
-    """Path of ``sacct`` or ``sstat``, honouring ``HJP_SACCT`` and ``HJP_SSTAT``."""
-    override = os.environ.get(f"HJP_{name.upper()}")
+    """Path of ``sacct`` or ``sstat``, honouring ``PIPEPROF_SACCT`` and ``PIPEPROF_SSTAT``."""
+    override = os.environ.get(f"PIPEPROF_{name.upper()}")
     if override:
         return override
     found = shutil.which(name)

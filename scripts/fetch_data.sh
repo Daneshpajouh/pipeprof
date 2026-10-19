@@ -10,7 +10,7 @@ DATA_DIR="${1:-${DATA_DIR:-data}}"
 mkdir -p "${DATA_DIR}"
 DATA_DIR="$(cd "${DATA_DIR}" && pwd)"
 CLINVAR_DIR="${DATA_DIR}/clinvar"
-BAM_DIR="${DATA_DIR}/hpc-job-profiler/bam"
+BAM_DIR="${DATA_DIR}/pipeprof/bam"
 mkdir -p "${CLINVAR_DIR}" "${BAM_DIR}"
 
 # ClinVar GRCh38 VCF. The HTTPS mirror's robots.txt disallows crawlers, so this
@@ -24,7 +24,7 @@ fetch_clinvar() {
         echo "reuse ${dest}"
         return 0
     fi
-    local part="${dest}.part.hjp.$$"
+    local part="${dest}.part.pipeprof.$$"
     curl -sS -m 1800 --retry 3 -o "${part}" "${CLINVAR_BASE}/${name}"
     if [[ -s "${dest}" ]]; then
         rm -f "${part}"

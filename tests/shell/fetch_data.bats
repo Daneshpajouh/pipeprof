@@ -5,10 +5,10 @@
 setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../../scripts/fetch_data.sh"
     DATA="${BATS_TEST_TMPDIR}/data"
-    mkdir -p "${DATA}/clinvar" "${DATA}/hpc-job-profiler/bam"
+    mkdir -p "${DATA}/clinvar" "${DATA}/pipeprof/bam"
     printf 'not really a vcf\n' > "${DATA}/clinvar/clinvar.vcf.gz"
     printf 'index\n' > "${DATA}/clinvar/clinvar.vcf.gz.tbi"
-    printf 'bam\n' > "${DATA}/hpc-job-profiler/bam/NA12878.chr20.lowcov.bam"
+    printf 'bam\n' > "${DATA}/pipeprof/bam/NA12878.chr20.lowcov.bam"
 }
 
 md5_of() {

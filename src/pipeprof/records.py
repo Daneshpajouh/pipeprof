@@ -29,8 +29,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from hpc_job_profiler.slurm import normalise_state, parse_parsable
-from hpc_job_profiler.units import (
+from pipeprof.slurm import normalise_state, parse_parsable
+from pipeprof.units import (
     MIB,
     parse_hms,
     parse_memory,
@@ -504,7 +504,7 @@ def apply_snakemake_log(records: list[TaskRecord], jobs: dict[str, SnakemakeJob]
 
 
 def parse_watch_log(records: list[dict[str, Any]], name: str = "") -> list[TaskRecord]:
-    """Summarise an ``hjp watch`` log as one record: peak RSS, CPU and elapsed against limits."""
+    """One record from a ``pipeprof watch`` log: peak RSS, CPU and elapsed against limits."""
     start: dict[str, Any] = next((r for r in records if r.get("type") == "start"), {})
     samples = [r for r in records if r.get("type") == "sample"]
     end: dict[str, Any] = next((r for r in reversed(records) if r.get("type") == "end"), {})

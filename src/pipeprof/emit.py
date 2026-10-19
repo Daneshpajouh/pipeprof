@@ -20,8 +20,8 @@ import math
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from hpc_job_profiler.fit import Fit, ModelKind
-from hpc_job_profiler.units import (
+from pipeprof.fit import Fit, ModelKind
+from pipeprof.units import (
     MIB,
     format_slurm_duration,
     round_up_memory,

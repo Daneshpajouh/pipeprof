@@ -1,4 +1,4 @@
-"""Command line interface: ``hjp calibrate``, ``watch``, ``tail``, ``report``, ``provenance``."""
+"""Command line: ``pipeprof calibrate``, ``watch``, ``tail``, ``report``, ``provenance``."""
 
 from __future__ import annotations
 
@@ -12,22 +12,22 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from hpc_job_profiler import __version__
-from hpc_job_profiler.calibrate import (
+from pipeprof import __version__
+from pipeprof.calibrate import (
     DEFAULT_FRACTIONS,
     CalibrationError,
     calibrate,
     write_outputs,
 )
-from hpc_job_profiler.logkit import RunLogger, new_run_id, utc_now_iso
-from hpc_job_profiler.provenance import capture
-from hpc_job_profiler.records import read_sources
-from hpc_job_profiler.report import Thresholds, build_report, to_html, to_json, to_markdown
-from hpc_job_profiler.slurm import SlurmError, run_text, sacct_command
-from hpc_job_profiler.subsample import InputKind, SubsampleError
-from hpc_job_profiler.tail import tail as tail_view
-from hpc_job_profiler.units import format_memory, format_slurm_duration, parse_memory
-from hpc_job_profiler.watch import AlertConfig, JsonlSink, watch_pid, watch_slurm
+from pipeprof.logkit import RunLogger, new_run_id, utc_now_iso
+from pipeprof.provenance import capture
+from pipeprof.records import read_sources
+from pipeprof.report import Thresholds, build_report, to_html, to_json, to_markdown
+from pipeprof.slurm import SlurmError, run_text, sacct_command
+from pipeprof.subsample import InputKind, SubsampleError
+from pipeprof.tail import tail as tail_view
+from pipeprof.units import format_memory, format_slurm_duration, parse_memory
+from pipeprof.watch import AlertConfig, JsonlSink, watch_pid, watch_slurm
 
 app = typer.Typer(
     help="Profile bioinformatics jobs before, during and after Slurm submission.",
@@ -39,7 +39,7 @@ console = Console(stderr=True)
 
 def _version(value: bool) -> None:
     if value:
-        typer.echo(f"hjp {__version__}")
+        typer.echo(f"pipeprof {__version__}")
         raise typer.Exit()
 
 
@@ -64,7 +64,7 @@ def calibrate_cmd(
     input_path: Annotated[Path, typer.Argument(help="Full input file (VCF, BAM, FASTQ, text).")],
     command: Annotated[list[str], typer.Argument(help="Command after --, with {input}.")],
     outdir: Annotated[Path, typer.Option("--outdir", "-o", help="Where results go.")] = Path(
-        "hjp_calibration"
+        "pipeprof_calibration"
     ),
     workdir: Annotated[
         Path | None, typer.Option(help="Scratch folder for subsamples (default OUTDIR/work).")
@@ -96,7 +96,9 @@ def calibrate_cmd(
 ) -> None:
     """Run COMMAND on graduated subsamples of INPUT_PATH and predict the full run."""
     outdir.mkdir(parents=True, exist_ok=True)
-    log = RunLogger("hjp.calibrate", jsonl_path=outdir / "hjp.log.jsonl", console=sys.stderr)
+    log = RunLogger(
+        "pipeprof.calibrate", jsonl_path=outdir / "pipeprof.log.jsonl", console=sys.stderr
+    )
     try:
         result = calibrate(
             input_path,
@@ -212,7 +214,7 @@ def watch_cmd(
 
 @app.command("tail")
 def tail_cmd(
-    log: Annotated[Path, typer.Argument(help="JSON lines file written by hjp watch.")],
+    log: Annotated[Path, typer.Argument(help="JSON lines file written by pipeprof watch.")],
     once: Annotated[bool, typer.Option(help="Print once and exit.")] = False,
 ) -> None:
     """Show a live view of a watch log."""
@@ -227,11 +229,13 @@ def report_cmd(
         list[Path], typer.Option(help="Snakemake benchmark file or folder.")
     ] = [],  # noqa: B006
     snakemake_log: Annotated[list[Path], typer.Option(help="Snakemake run log.")] = [],  # noqa: B006
-    watch_log: Annotated[list[Path], typer.Option(help="JSON lines log from hjp watch.")] = [],  # noqa: B006
+    watch_log: Annotated[
+        list[Path], typer.Option(help="JSON lines log from pipeprof watch.")
+    ] = [],  # noqa: B006
     from_slurm: Annotated[
         list[str], typer.Option(help="Job ID to read directly with sacct.")
     ] = [],  # noqa: B006
-    outdir: Annotated[Path, typer.Option("--outdir", "-o")] = Path("hjp_report"),
+    outdir: Annotated[Path, typer.Option("--outdir", "-o")] = Path("pipeprof_report"),
     cpu_threshold: Annotated[float, typer.Option(help="Flag CPU efficiency below.")] = 0.5,
     mem_threshold: Annotated[float, typer.Option(help="Flag memory efficiency below.")] = 0.5,
     show_sacct: Annotated[bool, typer.Option(help="Print the sacct command to use.")] = False,

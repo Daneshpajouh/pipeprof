@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from hpc_job_profiler.fit import (
+from pipeprof.fit import (
     FitError,
     ModelKind,
     extrapolation_errors,

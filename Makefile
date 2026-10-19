@@ -16,7 +16,7 @@ type:
 	$(BIN)/mypy
 
 test:
-	$(BIN)/pytest --cov=hpc_job_profiler --cov-report=term --cov-fail-under=90
+	$(BIN)/pytest --cov=pipeprof --cov-report=term --cov-fail-under=90
 
 shell:
 	shellcheck scripts/*.sh
@@ -33,8 +33,8 @@ docs:
 	$(BIN)/mkdocs build --strict
 
 docker:
-	docker build -t hjp .
-	docker build --target test -t hjp-test . && docker run --rm hjp-test
+	docker build -t pipeprof .
+	docker build --target test -t pipeprof-test . && docker run --rm pipeprof-test
 
 clean:
 	rm -rf dist site .coverage .pytest_cache .mypy_cache .ruff_cache

@@ -9,14 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from hpc_job_profiler.calibrate import (
+from pipeprof.calibrate import (
     CalibrationError,
     calibrate,
     file_extension,
     render_command,
     write_outputs,
 )
-from hpc_job_profiler.subsample import (
+from pipeprof.subsample import (
     InputKind,
     SubsampleError,
     detect_kind,
@@ -232,8 +232,8 @@ def test_cpu_request_comes_from_measured_runs(tmp_path: Path) -> None:
 
 
 def test_cpus_from_runs_ignores_extrapolated_ratio() -> None:
-    from hpc_job_profiler.calibrate import RunPoint, cpus_from_runs
-    from hpc_job_profiler.measure import Measurement
+    from pipeprof.calibrate import RunPoint, cpus_from_runs
+    from pipeprof.measure import Measurement
 
     def point(wall: float, cpu: float) -> RunPoint:
         m = Measurement("x", 0, wall, cpu, 0.0, 1, 1, 1, None, None, 0, 0, 1, 0.05)
@@ -249,7 +249,7 @@ def test_cpus_from_runs_ignores_extrapolated_ratio() -> None:
 
 def test_decreasing_series_never_predicts_below_measured(tmp_path: Path) -> None:
     # Start-up cost dominates: the smallest run is the slowest.
-    from hpc_job_profiler.fit import ModelKind, select_model
+    from pipeprof.fit import ModelKind, select_model
 
     xs = [1.0, 2.0, 5.0, 10.0, 20.0]
     ys = [0.057, 0.026, 0.030, 0.038, 0.030]

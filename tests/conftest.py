@@ -18,11 +18,11 @@ def data() -> Path:
 
 @pytest.fixture
 def slurm_shim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
-    """Point hjp at the fake sacct and sstat and give them a fresh state file."""
-    monkeypatch.setenv("HJP_SACCT", str(SHIM / "sacct"))
-    monkeypatch.setenv("HJP_SSTAT", str(SHIM / "sstat"))
-    monkeypatch.setenv("HJP_SHIM_STATE", str(tmp_path / "shim_state"))
-    monkeypatch.setenv("HJP_SHIM_STEPS", "4")
+    """Point pipeprof at the fake sacct and sstat and give them a fresh state file."""
+    monkeypatch.setenv("PIPEPROF_SACCT", str(SHIM / "sacct"))
+    monkeypatch.setenv("PIPEPROF_SSTAT", str(SHIM / "sstat"))
+    monkeypatch.setenv("PIPEPROF_SHIM_STATE", str(tmp_path / "shim_state"))
+    monkeypatch.setenv("PIPEPROF_SHIM_STEPS", "4")
     # The shim runs with the same interpreter as the tests.
     monkeypatch.setenv("PATH", str(Path(sys.executable).parent) + os.pathsep + os.environ["PATH"])
     yield tmp_path

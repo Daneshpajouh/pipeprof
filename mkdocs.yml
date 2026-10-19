@@ -1,5 +1,5 @@
-site_name: hpc-job-profiler
-repo_url: https://github.com/Daneshpajouh/hpc-job-profiler
+site_name: pipeprof
+repo_url: https://github.com/Daneshpajouh/pipeprof
 theme:
   name: material
 nav:

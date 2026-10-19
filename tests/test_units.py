@@ -4,8 +4,8 @@ import doctest
 
 import pytest
 
-from hpc_job_profiler import units
-from hpc_job_profiler.units import (
+from pipeprof import units
+from pipeprof.units import (
     GIB,
     MIB,
     UnitError,

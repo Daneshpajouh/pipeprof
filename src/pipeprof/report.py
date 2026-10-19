@@ -24,8 +24,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from hpc_job_profiler.records import TaskRecord
-from hpc_job_profiler.units import (
+from pipeprof.records import TaskRecord
+from pipeprof.units import (
     GIB,
     format_memory,
     format_slurm_duration,
@@ -124,7 +124,7 @@ class Totals:
 
 @dataclass
 class Report:
-    """Everything ``hjp report`` writes."""
+    """Everything ``pipeprof report`` writes."""
 
     tasks: list[TaskMetrics]
     recommendations: list[Recommendation]

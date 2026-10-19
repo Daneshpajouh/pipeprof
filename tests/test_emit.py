@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from hpc_job_profiler.emit import (
+from pipeprof.emit import (
     make_plan,
     nextflow_config,
     nextflow_directives,
@@ -15,8 +15,8 @@ from hpc_job_profiler.emit import (
     snakemake_profile,
     snakemake_rule,
 )
-from hpc_job_profiler.fit import fit_linear, fit_power
-from hpc_job_profiler.units import GIB, MIB
+from pipeprof.fit import fit_linear, fit_power
+from pipeprof.units import GIB, MIB
 
 
 def plan(**kw: Any) -> Any:

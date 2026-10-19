@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from hpc_job_profiler.logkit import RunLogger, new_run_id, read_jsonl, step_durations
-from hpc_job_profiler.provenance import (
+from pipeprof.logkit import RunLogger, new_run_id, read_jsonl, step_durations
+from pipeprof.provenance import (
     capture,
     git_state,
     hash_inputs,
@@ -55,9 +55,9 @@ def test_add_stream_and_defaults(tmp_path: Path) -> None:
 
 
 def test_run_id_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("HJP_RUN_ID", "shared-7")
+    monkeypatch.setenv("PIPEPROF_RUN_ID", "shared-7")
     assert new_run_id() == "shared-7"
-    monkeypatch.delenv("HJP_RUN_ID")
+    monkeypatch.delenv("PIPEPROF_RUN_ID")
     assert len(new_run_id().split("-")[-1]) == 6
 
 
@@ -94,7 +94,7 @@ def test_git_state_without_git(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setattr(shutil, "which", lambda name: None)
-    with caplog.at_level(logging.DEBUG, logger="hpc_job_profiler.provenance"):
+    with caplog.at_level(logging.DEBUG, logger="pipeprof.provenance"):
         assert git_state(tmp_path) == {"commit": None, "branch": None, "dirty": None}
     assert "git not found" in caplog.text
     prov = capture(inputs=[], tools=["git"], git_path=tmp_path).to_dict()
@@ -139,8 +139,8 @@ def test_tool_version_with_a_fake_tool(tmp_path: Path, monkeypatch: pytest.Monke
     tool.chmod(0o755)
     monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
     assert tool_version("faketool") == "faketool 9.9.1"
-    assert tool_version("surely-not-a-tool-hjp") is None
-    assert package_versions(["psutil", "not-a-package-hjp"])["not-a-package-hjp"] is None
+    assert tool_version("surely-not-a-tool-pipeprof") is None
+    assert package_versions(["psutil", "not-a-package-pipeprof"])["not-a-package-pipeprof"] is None
     prov = capture(inputs=[], tools=["faketool"], git_path=tmp_path).to_dict()
     assert prov["tool_versions"]["faketool"] == "faketool 9.9.1"
     assert prov["memory_total_bytes"] > 0

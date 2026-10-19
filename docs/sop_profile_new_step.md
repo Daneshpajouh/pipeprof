@@ -4,12 +4,12 @@ Purpose: set the Slurm, Nextflow or Snakemake resource request for a new or
 changed pipeline step from measurements, and record how it was set.
 
 Applies to: any step that runs on one node (single or multi-threaded tools).
-For MPI steps use `hjp report` on test jobs instead of `calibrate`.
+For MPI steps use `pipeprof report` on test jobs instead of `calibrate`.
 
 ## 1. Prepare
 
 1. Pick one representative input, ideally the largest common one. Record its
-   path and SHA-256 (`hjp provenance INPUT`).
+   path and SHA-256 (`pipeprof provenance INPUT`).
 2. Open an interactive session on the node type the step will use, for
    example `salloc --cpus-per-task=4 --mem=16G --time=1:00:00`.
 3. Note any memory cap option the tool has (`-m`, `-S`, `--max-memory`).
@@ -17,7 +17,7 @@ For MPI steps use `hjp report` on test jobs instead of `calibrate`.
 ## 2. Calibrate
 
 ```bash
-hjp calibrate INPUT --outdir calib/STEP --job-name STEP --threads N \
+pipeprof calibrate INPUT --outdir calib/STEP --job-name STEP --threads N \
   --fractions 0.01,0.02,0.05,0.1,0.2 -- TOOL ARGS '{input}' -o '{output}'
 ```
 
@@ -54,7 +54,7 @@ traced back to the run that produced it.
 ## 5. After the first production batch
 
 ```bash
-hjp report --from-slurm JOBIDS --outdir reports/STEP      # or --nextflow-trace / --snakemake-benchmarks
+pipeprof report --from-slurm JOBIDS --outdir reports/STEP      # or --nextflow-trace / --snakemake-benchmarks
 ```
 
 If memory efficiency is below 50 percent or time use below 25 percent across
