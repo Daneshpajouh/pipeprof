@@ -87,6 +87,21 @@ def test_interval_widens_with_noise_and_distance() -> None:
     assert lo < power.predict(60) < hi
 
 
+def test_interval_endpoints_match_hand_calculation() -> None:
+    # Textbook data: slope 0.6, intercept 2.2, SSE 2.4, s = sqrt(0.8), x mean 3,
+    # Sxx 10. t(0.975, 3 df) = 3.182446 from a printed table. Half width at x0:
+    # 3.182446 * sqrt(0.8) * sqrt(1 + 1/5 + (x0 - 3)^2 / 10).
+    xs, ys = [1, 2, 3, 4, 5], [2, 4, 5, 4, 5]
+    fit = fit_linear(xs, ys)
+    assert _known(fit.interval(3)) == pytest.approx((0.8819, 7.1181), abs=1e-4)
+    assert _known(fit.interval(10)) == pytest.approx((1.1697, 15.2303), abs=1e-4)
+    # The same points in log-log space: the power law interval is exp() of the above.
+    power = fit_power([math.exp(x) for x in xs], [math.exp(y) for y in ys])
+    lo, hi = _known(power.interval(math.exp(10)))
+    assert math.log(lo) == pytest.approx(1.1697, abs=1e-4)
+    assert math.log(hi) == pytest.approx(15.2303, abs=1e-4)
+
+
 def test_negative_slope_formula_and_clipping() -> None:
     fit = fit_linear([1, 2, 3], [10, 8, 6.5])
     assert " - " in fit.formula()
