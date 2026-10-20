@@ -6,17 +6,13 @@ nav:
   - Home: index.md
   - Why profiling saves cluster time: why_profiling.md
   - User guide: user_guide.md
-  - "SOP: profiling a new step": sop_profile_new_step.md
   - Scaling fit: algorithm.md
   - Results from real runs: results.md
   - "Case study: a Nextflow and bcftools run": case_study_nextflow_vcf_chain.md
   - Logging: logging.md
   - Testing: testing.md
   - Input formats: formats.md
-  - Code walk-through: code_walkthrough.md
-  - Operations:
-      - Runbook: operations/runbook.md
-      - Postmortem template: operations/postmortem_template.md
+  - Postmortems:
       - "2026-10-19: Snakemake on macOS": operations/postmortem_2026-10-19_snakemake_macos.md
       - "2026-10-19: ClinVar subsample": operations/postmortem_2026-10-19_clinvar_subsample.md
   - Data sources: data_sources.md

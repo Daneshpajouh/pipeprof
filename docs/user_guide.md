@@ -3,8 +3,17 @@
 ## Install
 
 ```bash
-pip install pipeprof      # once published; until then: pip install -e .
+pip install pipeprof      # once published on PyPI
 pipeprof --version
+```
+
+Until then, install from a clone:
+
+```bash
+git clone https://github.com/Daneshpajouh/pipeprof
+cd pipeprof
+python3 -m venv .venv && . .venv/bin/activate
+pip install -e .
 ```
 
 `calibrate` on BAM or CRAM needs `samtools` on `PATH`; indexed VCF input
@@ -29,7 +38,7 @@ Main options:
 |---|---|---|
 | `--fractions` | `0.01,0.02,0.05,0.1,0.2` | subsample sizes; cross any buffer cap the tool has |
 | `--repeats` | 1 | runs per size; use 3 when runs are under a second |
-| `--threads` | 1 | value for `{threads}` and the minimum CPU request |
+| `--threads` | 1 | value for `{threads}` and the largest CPU request; the request is the busiest subsample's cores, capped here |
 | `--shell` | off | run COMMAND through `/bin/sh -c`, for pipes |
 | `--x` | `bytes` | size measure: file bytes or `records` |
 | `--mem-headroom`, `--time-headroom` | 1.2, 1.5 | factors on the 95% upper bound |
@@ -45,6 +54,15 @@ Outputs in `--outdir`: `calibration.json` (every run, both fits, the
 cross-validation scores, the plan and provenance), `sbatch_header.sh`,
 `snakemake_resources.smk`, `snakemake_slurm_profile.yaml`,
 `nextflow_resources.config`, `nextflow_directives.nf` and `pipeprof.log.jsonl`.
+
+Before using a request, check three things in `calibration.json`: every run
+has `returncode` 0; `cv_scores` (mean absolute log error when each subsample
+is predicted from the smaller ones) is below about 0.1 for the chosen model,
+which means about 10 percent; with `--validate-full`, `plan_covers_actual` is
+true for memory and time. A score above 0.3 means the curve is not stable:
+widen the fractions or add `--repeats`. If the tool has a memory cap option
+(`-m`, `-S`, `--max-memory`), choose fractions that put at least two
+subsamples above the cap.
 
 ## During: `pipeprof watch` and `pipeprof tail`
 
