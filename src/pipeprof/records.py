@@ -593,7 +593,28 @@ def apply_snakemake_log(
 
 
 def parse_watch_log(records: list[dict[str, Any]], name: str = "") -> list[TaskRecord]:
-    """One record from a ``pipeprof watch`` log: peak RSS, CPU and elapsed against limits."""
+    """One record per session in a ``pipeprof watch`` log: peak RSS, CPU and elapsed.
+
+    ``pipeprof watch`` appends to its log, so one file can hold several
+    sessions. Lines are grouped by ``run_id`` and split again at each
+    ``start`` line, because ``PIPEPROF_RUN_ID`` gives every session of a
+    pipeline the same ID.
+    """
+    by_run: dict[str, list[list[dict[str, Any]]]] = {}
+    for line in records:
+        sessions = by_run.setdefault(str(line.get("run_id", "")), [])
+        if line.get("type") == "start" or not sessions:
+            sessions.append([])
+        sessions[-1].append(line)
+    return [
+        record
+        for sessions in by_run.values()
+        for session in sessions
+        for record in _watch_session(session, name)
+    ]
+
+
+def _watch_session(records: list[dict[str, Any]], name: str) -> list[TaskRecord]:
     start: dict[str, Any] = next((r for r in records if r.get("type") == "start"), {})
     samples = [r for r in records if r.get("type") == "sample"]
     end: dict[str, Any] = next((r for r in reversed(records) if r.get("type") == "end"), {})

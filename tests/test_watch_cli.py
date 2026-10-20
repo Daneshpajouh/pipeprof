@@ -270,3 +270,23 @@ def test_watch_log_without_samples_gives_no_record() -> None:
         ]
     )[0]
     assert rec.state == "FAILED" and rec.exit_code == 3 and rec.job_id == "7"
+
+
+def test_appended_watch_sessions_stay_separate() -> None:
+    from pipeprof.records import parse_watch_log
+
+    def session(run_id: str, pid: int, rss: int, code: int) -> list[dict[str, object]]:
+        return [
+            {"run_id": run_id, "type": "start", "pid": pid, "command": "bcftools sort"},
+            {"run_id": run_id, "type": "sample", "rss_bytes": rss, "elapsed_s": 4, "pid": pid},
+            {"run_id": run_id, "type": "end", "returncode": code},
+        ]
+
+    # Two runs of `pipeprof watch --out w.jsonl`, the second killed for memory.
+    lines = session("a", 101, 300, 0) + session("b", 202, 900, 137)
+    first, second = parse_watch_log(lines)
+    assert (first.job_id, first.max_rss_bytes, first.state) == ("101", 300, "COMPLETED")
+    assert (second.job_id, second.max_rss_bytes, second.exit_code) == ("202", 900, 137)
+    # PIPEPROF_RUN_ID shared by both sessions: the start lines still split them.
+    shared = session("job-42", 101, 300, 0) + session("job-42", 202, 900, 137)
+    assert [r.max_rss_bytes for r in parse_watch_log(shared)] == [300, 900]
