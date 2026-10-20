@@ -157,6 +157,14 @@ def _validate_fractions(fractions: Sequence[float]) -> list[float]:
         raise SubsampleError("at least one fraction is needed")
     if cleaned[0] <= 0 or cleaned[-1] > 1:
         raise SubsampleError("fractions must be in (0, 1]")
+    # Subsample files and run tags carry the fraction to four decimals, so two
+    # fractions that round alike would write to the same file.
+    tags = [f"{frac:.4f}" for frac in cleaned]
+    if len(set(tags)) < len(tags):
+        raise SubsampleError(
+            "fractions must differ in the first four decimals: "
+            + ", ".join(f"{frac:g}" for frac in cleaned)
+        )
     return cleaned
 
 
@@ -170,9 +178,9 @@ def subsample_text(
 ) -> tuple[list[Subsample], FullInput]:
     """Subsample a VCF, FASTQ or text file in one pass. Returns the subsamples and full size."""
     source = Path(path)
+    fracs = _validate_fractions(fractions)
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
-    fracs = _validate_fractions(fractions)
     compress = is_gzipped(source)
     stem = strip_compression_suffix(source.name)
     suffix = ".gz" if compress else ""

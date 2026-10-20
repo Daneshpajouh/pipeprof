@@ -117,6 +117,10 @@ def test_subsample_errors(tmp_path: Path) -> None:
         make_subsamples(vcf, [0.0, 0.5], tmp_path / "o")
     with pytest.raises(SubsampleError, match="at least one"):
         make_subsamples(vcf, [], tmp_path / "o")
+    # Both would be written to sub_0.1000_in.vcf.
+    with pytest.raises(SubsampleError, match=r"first four decimals: 0\.10001, 0\.10002"):
+        make_subsamples(vcf, [0.10001, 0.10002], tmp_path / "close")
+    assert not (tmp_path / "close").exists()
 
 
 @pytest.mark.skipif(not HAVE_SAMTOOLS, reason="samtools not installed")
