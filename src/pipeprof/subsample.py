@@ -278,12 +278,13 @@ def subsample_bam(
     threads: int = 1,
 ) -> tuple[list[Subsample], FullInput]:
     """Subsample a BAM or CRAM with ``samtools view --subsample``."""
+    fracs = _validate_fractions(fractions)
     samtools = _samtools()
     source = Path(path)
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
     subs: list[Subsample] = []
-    for frac in _validate_fractions(fractions):
+    for frac in fracs:
         target = out / f"sub_{frac:.4f}_{source.stem}.bam"
         subprocess.run(
             [
