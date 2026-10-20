@@ -23,7 +23,7 @@ copied from an older script.
    trace files and Snakemake benchmark files, shows what was used against what
    was requested, and recommends the next request.
 
-![Prediction divided by the measured full run for 12 held-out runs](docs/img/validation.svg)
+![12 predictions from 4 held-out full runs, each divided by the measured value](docs/img/validation.svg)
 
 Four calibrations on ClinVar (200 MB VCF) and a 1000 Genomes BAM, each
 checked against a full run the fit never saw. Time predictions landed

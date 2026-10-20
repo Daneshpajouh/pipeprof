@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="428" viewBox="0 0 680 428" font-family="Helvetica, Arial, sans-serif" font-size="12">
-<title>pipeprof calibrate: 12 held-out full runs</title>
-<desc>Predicted value and 95 percent interval of each full run, divided by the measured value, for four calibrations on ClinVar and a 1000 Genomes BAM. 5 of 12 intervals contain the measured value.</desc>
+<title>pipeprof calibrate: 12 predictions checked against 4 held-out full runs</title>
+<desc>Predicted wall time, CPU time and peak memory with their 95 percent intervals, divided by the value measured on the full run, for four calibrations on ClinVar and a 1000 Genomes BAM. 5 of 12 intervals contain the measured value.</desc>
 <rect width="680" height="428" fill="#ffffff"/>
 <text x="20" y="24" font-size="14" font-weight="bold" fill="#111">Prediction divided by the measured full run (log scale)</text>
 <text x="20" y="44" fill="#444">Bar: 95% interval. Dot: point prediction. Line at 1: the measured value. Data: docs/results.md.</text>

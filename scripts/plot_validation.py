@@ -1,6 +1,6 @@
 """Draw docs/img/validation.svg from the held-out validation table in docs/results.md.
 
-Run from the repository root: python3 scripts/plot_validation.py
+Usage: python3 scripts/plot_validation.py
 Standard library only, so the figure can be rebuilt without the plotting stack.
 """
 
@@ -11,13 +11,13 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-RESULTS = Path("docs/results.md")
-OUT = Path("docs/img/validation.svg")
+ROOT = Path(__file__).resolve().parents[1]
+RESULTS = ROOT / "docs" / "results.md"
+OUT = ROOT / "docs" / "img" / "validation.svg"
 
 NUMBER = re.compile(r"[\d,]+(?:\.\d+)?")
 METRIC_LABEL = {"wall": "wall time", "CPU": "CPU time", "peak RSS": "peak memory"}
 
-# Ratio axis, log scale.
 LO, HI = 0.5, 4.0
 LEFT, RIGHT, TOP, ROW = 210, 640, 70, 24
 INSIDE, OUTSIDE = "#1b7837", "#c2410c"
@@ -48,7 +48,9 @@ def read_rows(text: str) -> list[Row]:
             break
         cells = [c.strip() for c in line.strip("|").split("|")]
         name, metric, _model, predicted, interval, actual, _ratio, inside = cells
-        if name != name[:1]:
+        # The first row of each run carries its label ("A sort, 1 to 20%"); the
+        # others repeat only the letter.
+        if not run or name.split(maxsplit=1)[0] != run.split(maxsplit=1)[0]:
             run = name
         low, high = numbers(interval)[:2]
         rows.append(
@@ -66,7 +68,8 @@ def read_rows(text: str) -> list[Row]:
 
 
 def x_of(ratio: float) -> float:
-    ratio = min(max(ratio, LO), HI)
+    if not LO <= ratio <= HI:
+        raise SystemExit(f"ratio {ratio:.3f} is outside the axis {LO} to {HI}; widen it")
     share = (math.log(ratio) - math.log(LO)) / (math.log(HI) - math.log(LO))
     return LEFT + share * (RIGHT - LEFT)
 
@@ -77,9 +80,11 @@ def svg(rows: list[Row]) -> str:
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="680" height="{height}" '
         f'viewBox="0 0 680 {height}" font-family="Helvetica, Arial, sans-serif" font-size="12">',
-        f"<title>pipeprof calibrate: {len(rows)} held-out full runs</title>",
-        "<desc>Predicted value and 95 percent interval of each full run, divided by the "
-        "measured value, for four calibrations on ClinVar and a 1000 Genomes BAM. "
+        f"<title>pipeprof calibrate: {len(rows)} predictions checked against "
+        f"{len({r.run for r in rows})} held-out full runs</title>",
+        "<desc>Predicted wall time, CPU time and peak memory with their 95 percent "
+        "intervals, divided by the value measured on the full run, for four "
+        "calibrations on ClinVar and a 1000 Genomes BAM. "
         f"{inside} of {len(rows)} intervals contain the measured value.</desc>",
         f'<rect width="680" height="{height}" fill="#ffffff"/>',
         '<text x="20" y="24" font-size="14" font-weight="bold" fill="#111">'
@@ -141,7 +146,7 @@ def main() -> None:
     inside = sum(r.inside for r in rows)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(svg(rows), encoding="utf-8")
-    print(f"wrote {OUT}: {len(rows)} runs, {inside} inside their interval")
+    print(f"wrote {OUT}: {len(rows)} predictions, {inside} inside their interval")
 
 
 if __name__ == "__main__":

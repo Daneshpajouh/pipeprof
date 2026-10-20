@@ -70,7 +70,7 @@ ignore = ["PLR0913", "PLR0917", "PLR2004", "PLR0912", "PLR0914", "PLR0915", "PLR
 [tool.mypy]
 strict = true
 python_version = "3.11"
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
 module = ["tests.*"]

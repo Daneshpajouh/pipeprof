@@ -9,8 +9,8 @@ dev:
 	$(BIN)/pip install -e ".[dev,docs]" build twine
 
 lint:
-	$(BIN)/ruff check src tests
-	$(BIN)/ruff format --check src tests
+	$(BIN)/ruff check src tests scripts
+	$(BIN)/ruff format --check src tests scripts
 
 type:
 	$(BIN)/mypy
