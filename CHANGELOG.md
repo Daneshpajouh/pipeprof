@@ -2,6 +2,23 @@
 
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- `pipeprof report --watch-log`: a log that `pipeprof watch` appended to
+  more than once gives one task per session, also when two watches wrote to
+  it at the same time under one `PIPEPROF_RUN_ID`. Before, the sessions
+  merged into one task with the first session's PID and the last one's exit
+  status. The `end` line now carries the PID, and `pipeprof tail` shows only
+  the session that started last.
+- `calibrate`: fractions that round to the same four decimals (0.10001 and
+  0.10002) are rejected; their subsample files had the same name, so one
+  overwrote the other.
+- `calibrate --validate-full`: when the full run fails, no comparison is
+  made, `plan_covers_actual` is null and the command exits 1. Before, the
+  crashed run was compared with the prediction as if it had finished.
+- The release workflow runs the full CI and installs the built wheel
+  outside the checkout before publishing.
+
 ## 1.1.0 (2026-10-19)
 
 - First release under the name pipeprof (was hpc-job-profiler): package,

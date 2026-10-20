@@ -89,7 +89,7 @@ def test_interval_widens_with_noise_and_distance() -> None:
 
 def test_interval_endpoints_match_hand_calculation() -> None:
     # Textbook data: slope 0.6, intercept 2.2, SSE 2.4, s = sqrt(0.8), x mean 3,
-    # Sxx 10. t(0.975, 3 df) = 3.182446 from a printed table. Half width at x0:
+    # Sxx 10. t(0.975, 3 df) = 3.182446 (printed tables give 3.182). Half width at x0:
     # 3.182446 * sqrt(0.8) * sqrt(1 + 1/5 + (x0 - 3)^2 / 10).
     xs, ys = [1, 2, 3, 4, 5], [2, 4, 5, 4, 5]
     fit = fit_linear(xs, ys)

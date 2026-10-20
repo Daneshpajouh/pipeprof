@@ -5,7 +5,7 @@ on macOS and in the `python:3.13-slim` Linux container.
 
 | Layer | What it covers | Command |
 |---|---|---|
-| Unit | units, Student t quantiles against printed tables, OLS fits, model selection, emitters, logging, provenance | `pytest tests/test_units.py tests/test_fit.py tests/test_emit.py tests/test_logkit_provenance.py` |
+| Unit | units, Student t quantiles against printed tables, OLS fits, prediction interval endpoints against a hand calculation, model selection, emitters, logging, provenance | `pytest tests/test_units.py tests/test_fit.py tests/test_emit.py tests/test_logkit_provenance.py` |
 | Parser edge cases | every file in `tests/data` (two Slurm ReqMem formats, OOM, TIMEOUT, NODE_FAIL, arrays, steps, missing MaxRSS, `1.5G`/`1536M`/`1572864K`, `c`/`n` suffixes, truncated and empty files, Nextflow retries, Snakemake `NA`) | `pytest tests/test_records_report.py tests/test_edge_cases.py` |
 | Property based | duration and memory round trips, fits recover exact linear and power models, the interval contains the point prediction (hypothesis) | `pytest tests/test_edge_cases.py -k "round_trip or scale or recover or contains"` |
 | Process measurement | real child processes: a 120 MiB allocation, two concurrent children (tree peak above `ru_maxrss`), exit codes | `pytest tests/test_measure.py` |
@@ -14,11 +14,15 @@ on macOS and in the `python:3.13-slim` Linux container.
 | Linux container | the whole suite on Debian with apt's samtools 1.21 | `docker build --target test -t pipeprof-test . && docker run --rm pipeprof-test` |
 | Real data | the four held-out calibrations in [results.md](results.md) | commands in results.md |
 
-Results of the last run of each (v1.0.1, 2026-10-19 12:48 Pacific):
+Local runs on 2026-10-19 (Pacific). The first is the current code; the
+container and shell runs are from v1.0.1 at 12:48 and have not been repeated
+by hand since. CI runs the suite on Linux and macOS on every push to main
+and every pull request.
 
 ```
-$ pytest --cov=pipeprof      # macOS, Python 3.13.9
-119 passed; TOTAL 2218 statements, 97% coverage (branch coverage on)
+$ pytest --cov=pipeprof      # macOS, Python 3.13.9, 17:23
+244 passed; TOTAL 3542 statements, 97% coverage (branch coverage on)
+# v1.0.1, 12:48
 $ git clone . c && docker build --target test -t t c && docker run --rm t   # Debian, Python 3.13.16, git 2.47.3
 119 passed in 9.46s; TOTAL 97%
 # python:3.12-slim with samtools, bcftools, tabix, procps and no git, source from git archive

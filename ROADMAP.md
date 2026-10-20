@@ -22,8 +22,9 @@ is needed.
    fill on Linux and add that report to the case study.
 5. Index BAM subsamples when the input has a `.bai`, for tools that need
    region queries (same failure class as the ClinVar postmortem).
-6. Nextflow example. A small real pipeline run with `-with-trace` (default
-   fields) feeding `pipeprof report`, and a check that the emitted
-   `nextflow_directives.nf` closures parse in Nextflow.
+6. Nextflow directives check. The Nextflow example
+   ([case study](docs/case_study_nextflow_vcf_chain.md)) feeds
+   `pipeprof analyze`; still missing is a CI step that loads the emitted
+   `nextflow_directives.nf` closures in Nextflow.
 7. conda-forge. Submit `recipe/meta.yaml` to staged-recipes after the
    first PyPI release.
