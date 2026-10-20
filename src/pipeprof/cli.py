@@ -245,7 +245,7 @@ def watch_cmd(
             proc = subprocess.Popen(command)
             n = watch_pid(proc.pid, sink, config, interval, max_seconds)
             code = proc.wait()
-            sink.write({"type": "end", "ts": utc_now_iso(), "returncode": code})
+            sink.write({"type": "end", "ts": utc_now_iso(), "pid": proc.pid, "returncode": code})
     console.print(f"{n} samples written to {out}")
 
 

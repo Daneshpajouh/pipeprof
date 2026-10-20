@@ -12,7 +12,7 @@ from rich.table import Table
 from rich.text import Text
 
 from pipeprof.units import format_memory
-from pipeprof.watch import read_watch_log
+from pipeprof.watch import read_watch_log, watch_sessions
 
 _BARS = " ▁▂▃▄▅▆▇█"
 
@@ -54,18 +54,25 @@ def render(records: list[dict[str, Any]]) -> Group:
     return Group(table, rss_line, *alert_lines)
 
 
+def latest_session(path: str | Path) -> list[dict[str, Any]]:
+    """The lines of the session that started last; earlier appended sessions are left out."""
+    sessions = watch_sessions(read_watch_log(path))
+    started = [s for s in sessions if s[0].get("type") == "start"]
+    return (started or sessions or [[]])[-1]
+
+
 def tail(
     path: str | Path, follow: bool = True, refresh_s: float = 1.0, console: Console | None = None
 ) -> None:
     """Show the watch log; with ``follow`` keep refreshing until the log ends or Ctrl-C."""
     out = console or Console()
     if not follow:
-        out.print(render(read_watch_log(path)))
+        out.print(render(latest_session(path)))
         return
-    with Live(render(read_watch_log(path)), console=out, refresh_per_second=4) as live:
+    with Live(render(latest_session(path)), console=out, refresh_per_second=4) as live:
         try:
             while True:
-                records = read_watch_log(path)
+                records = latest_session(path)
                 live.update(render(records))
                 if records and records[-1].get("type") == "end":
                     break

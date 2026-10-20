@@ -261,6 +261,33 @@ def watch_slurm(
     return count
 
 
+def watch_sessions(records: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Split a watch log into sessions, in the order they started.
+
+    ``pipeprof watch`` appends, so one log can hold several sessions, written
+    one after another or at the same time. Lines belong together when they
+    share ``run_id`` and the watched PID or Slurm job ID; a ``start`` line
+    always opens a new session, because ``PIPEPROF_RUN_ID`` can give every
+    session the same run ID. A line with neither ID (the ``end`` line of logs
+    from earlier versions) goes to the newest session of its run ID.
+    """
+    sessions: list[list[dict[str, Any]]] = []
+    by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    newest: dict[str, list[dict[str, Any]]] = {}
+    for line in records:
+        run_id = str(line.get("run_id", ""))
+        ident = str(line.get("job_id") or line.get("pid") or "")
+        session = by_key.get((run_id, ident)) if ident else newest.get(run_id)
+        if session is None or line.get("type") == "start":
+            session = []
+            sessions.append(session)
+            newest[run_id] = session
+            if ident:
+                by_key[(run_id, ident)] = session
+        session.append(line)
+    return sessions
+
+
 def read_watch_log(path: str | Path) -> list[dict[str, Any]]:
     """Read a watch log, ignoring a partly written last line."""
     records: list[dict[str, Any]] = []

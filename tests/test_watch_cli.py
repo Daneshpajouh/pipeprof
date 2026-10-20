@@ -311,3 +311,27 @@ def test_appended_watch_sessions_stay_separate() -> None:
     # PIPEPROF_RUN_ID shared by both sessions: the start lines still split them.
     shared = session("job-42", 101, 300, 0) + session("job-42", 202, 900, 137)
     assert [r.max_rss_bytes for r in parse_watch_log(shared)] == [300, 900]
+    # Two watches running at once on one log, lines interleaved.
+    a, b = session("job-42", 101, 300, 0), session("job-42", 202, 900, 137)
+    a[2]["pid"], b[2]["pid"] = 101, 202
+    mixed = parse_watch_log([a[0], b[0], a[1], b[1], a[2], b[2]])
+    assert [(r.job_id, r.max_rss_bytes, r.exit_code) for r in mixed] == [
+        ("101", 300, 0),
+        ("202", 900, 137),
+    ]
+
+
+def test_tail_shows_only_the_latest_session(tmp_path: Path) -> None:
+    log = tmp_path / "w.jsonl"
+    lines = [
+        {"run_id": "a", "type": "start", "pid": 101},
+        {"run_id": "a", "type": "sample", "pid": 101, "rss_bytes": 900 * 2**20, "elapsed_s": 5},
+        {"run_id": "a", "type": "end", "pid": 101, "returncode": 0},
+        {"run_id": "b", "type": "start", "pid": 202},
+        {"run_id": "b", "type": "sample", "pid": 202, "rss_bytes": 300 * 2**20, "elapsed_s": 2},
+    ]
+    log.write_text("".join(json.dumps(x) + "\n" for x in lines))
+    console = Console(record=True, width=100)
+    tail(log, follow=False, console=console)
+    text = console.export_text()
+    assert "300.0M" in text and "900.0M" not in text
