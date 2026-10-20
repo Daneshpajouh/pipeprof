@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="428" viewBox="0 0 680 428" font-family="Helvetica, Arial, sans-serif" font-size="12">
+<title>pipeprof calibrate: 12 held-out full runs</title>
+<desc>Predicted value and 95 percent interval of each full run, divided by the measured value, for four calibrations on ClinVar and a 1000 Genomes BAM. 5 of 12 intervals contain the measured value.</desc>
+<rect width="680" height="428" fill="#ffffff"/>
+<text x="20" y="24" font-size="14" font-weight="bold" fill="#111">Prediction divided by the measured full run (log scale)</text>
+<text x="20" y="44" fill="#444">Bar: 95% interval. Dot: point prediction. Line at 1: the measured value. Data: docs/results.md.</text>
+<line x1="210.0" y1="62" x2="210.0" y2="358" stroke="#ddd"/>
+<text x="210.0" y="374" text-anchor="middle" fill="#444">0.5</text>
+<line x1="353.3" y1="62" x2="353.3" y2="358" stroke="#111"/>
+<text x="353.3" y="374" text-anchor="middle" fill="#444">1</text>
+<line x1="496.7" y1="62" x2="496.7" y2="358" stroke="#ddd"/>
+<text x="496.7" y="374" text-anchor="middle" fill="#444">2</text>
+<line x1="640.0" y1="62" x2="640.0" y2="358" stroke="#ddd"/>
+<text x="640.0" y="374" text-anchor="middle" fill="#444">4</text>
+<text x="20" y="86.0" fill="#111">A sort, 1 to 20%</text>
+<text x="200" y="86.0" text-anchor="end" fill="#444">wall time</text>
+<line x1="325.1" y1="82.0" x2="364.6" y2="82.0" stroke="#1b7837" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="345.7" cy="82.0" r="4" fill="#1b7837"/>
+<text x="200" y="110.0" text-anchor="end" fill="#444">CPU time</text>
+<line x1="343.6" y1="106.0" x2="347.3" y2="106.0" stroke="#c2410c" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="345.4" cy="106.0" r="4" fill="#c2410c"/>
+<text x="200" y="134.0" text-anchor="end" fill="#444">peak memory</text>
+<line x1="617.4" y1="130.0" x2="625.7" y2="130.0" stroke="#c2410c" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="621.6" cy="130.0" r="4" fill="#c2410c"/>
+<line x1="20" y1="142.0" x2="660" y2="142.0" stroke="#bbb" stroke-dasharray="2 3"/>
+<text x="20" y="158.0" fill="#111">B sort, 5 to 50%</text>
+<text x="200" y="158.0" text-anchor="end" fill="#444">wall time</text>
+<line x1="339.9" y1="154.0" x2="373.8" y2="154.0" stroke="#1b7837" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="357.6" cy="154.0" r="4" fill="#1b7837"/>
+<text x="200" y="182.0" text-anchor="end" fill="#444">CPU time</text>
+<line x1="348.6" y1="178.0" x2="362.3" y2="178.0" stroke="#1b7837" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="355.6" cy="178.0" r="4" fill="#1b7837"/>
+<text x="200" y="206.0" text-anchor="end" fill="#444">peak memory</text>
+<line x1="229.4" y1="202.0" x2="607.0" y2="202.0" stroke="#1b7837" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="494.5" cy="202.0" r="4" fill="#1b7837"/>
+<line x1="20" y1="214.0" x2="660" y2="214.0" stroke="#bbb" stroke-dasharray="2 3"/>
+<text x="20" y="230.0" fill="#111">C filter</text>
+<text x="200" y="230.0" text-anchor="end" fill="#444">wall time</text>
+<line x1="293.8" y1="226.0" x2="351.1" y2="226.0" stroke="#c2410c" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="324.5" cy="226.0" r="4" fill="#c2410c"/>
+<text x="200" y="254.0" text-anchor="end" fill="#444">CPU time</text>
+<line x1="314.1" y1="250.0" x2="336.1" y2="250.0" stroke="#c2410c" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="325.3" cy="250.0" r="4" fill="#c2410c"/>
+<text x="200" y="278.0" text-anchor="end" fill="#444">peak memory</text>
+<line x1="318.2" y1="274.0" x2="369.9" y2="274.0" stroke="#1b7837" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="344.5" cy="274.0" r="4" fill="#1b7837"/>
+<line x1="20" y1="286.0" x2="660" y2="286.0" stroke="#bbb" stroke-dasharray="2 3"/>
+<text x="20" y="302.0" fill="#111">D BAM sort</text>
+<text x="200" y="302.0" text-anchor="end" fill="#444">wall time</text>
+<line x1="257.5" y1="298.0" x2="275.1" y2="298.0" stroke="#c2410c" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="266.5" cy="298.0" r="4" fill="#c2410c"/>
+<text x="200" y="326.0" text-anchor="end" fill="#444">CPU time</text>
+<line x1="269.0" y1="322.0" x2="277.0" y2="322.0" stroke="#c2410c" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="273.1" cy="322.0" r="4" fill="#c2410c"/>
+<text x="200" y="350.0" text-anchor="end" fill="#444">peak memory</text>
+<line x1="365.3" y1="346.0" x2="373.5" y2="346.0" stroke="#c2410c" stroke-width="6" stroke-opacity="0.45"/>
+<circle cx="369.6" cy="346.0" r="4" fill="#c2410c"/>
+<circle cx="26" cy="394" r="4" fill="#1b7837"/>
+<text x="36" y="398" fill="#111">interval contains the measured value (5 of 12)</text>
+<circle cx="346" cy="394" r="4" fill="#c2410c"/>
+<text x="356" y="398" fill="#111">interval misses it (7 of 12)</text>
+</svg>

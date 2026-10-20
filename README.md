@@ -23,6 +23,20 @@ copied from an older script.
    trace files and Snakemake benchmark files, shows what was used against what
    was requested, and recommends the next request.
 
+![Prediction divided by the measured full run for 12 held-out runs](docs/img/validation.svg)
+
+Four calibrations on ClinVar (200 MB VCF) and a 1000 Genomes BAM, each
+checked against a full run the fit never saw. Time predictions landed
+between 0.66 and 1.02 of the measured value. The 95% interval held the
+measured value in 5 of 12 cases: it covers scatter around the fitted curve,
+not a curve of the wrong shape. Run A overestimated `bcftools sort` memory
+3.7 times because the tool stops growing at its `-m 512M` buffer, which the
+1 to 20 percent subsamples never reached; run B, with larger subsamples,
+cut that to 2.0 times and its interval held the measured value. No emitted
+request was too small for its full run. Commands and the full table are in
+[docs/results.md](docs/results.md); `scripts/plot_validation.py` redraws the
+figure from that table.
+
 A plain-language explanation of why this saves cluster time is in
 [docs/why_profiling.md](docs/why_profiling.md).
 
@@ -63,14 +77,14 @@ full run cpu_s: predicted 2.501, actual 4.221, inside interval: False
 full run peak_rss_bytes: predicted 3.652e+08, actual 4.952e+08, inside interval: False
 ```
 
-Time was close. Memory was 26 percent higher than predicted (472 MiB) and the
-512M request covered it with 8 percent to spare. The subsample runs lasted
-0.03 to 0.39 s, too short for a reliable fit, and Apple's sort used 1.9 cores
-on the full input but at most 1.3 on the subsamples; `pipeprof` logged a warning
-that the command used more cores than `--threads`. Larger inputs give better
-fits: the ClinVar runs in [docs/results.md](docs/results.md) (200 MB VCF,
-download commands in `scripts/fetch_data.sh`) predicted time within 4 percent,
-and that page also shows the cases where memory or time was off and why.
+Wall time was 13 percent above the prediction, inside the interval. Memory
+was 36 percent higher than predicted (472 MiB) and the 512M request covered it
+with 8 percent to spare. CPU time was 69 percent higher: Apple's sort used 1.9
+cores on the full input but at most 1.3 on the subsamples, and `pipeprof`
+logged a warning that the command used more cores than `--threads`. The
+subsample runs lasted 0.03 to 0.39 s, too short for a reliable fit; the
+ClinVar runs in the figure above, with subsamples of 2 to 100 MB, are the
+better guide.
 
 On Alliance clusters, install the dependencies from the cluster wheelhouse
 with psutil below 7.2, then the `pipeprof` wheel:
@@ -102,13 +116,11 @@ log.close()
 
 - [Why profiling saves cluster time](docs/why_profiling.md), for non-specialists
 - [User guide](docs/user_guide.md)
-- [SOP: profiling a new pipeline step](docs/sop_profile_new_step.md)
 - [Scaling fit and its validation](docs/algorithm.md)
 - [Results from real runs](docs/results.md)
 - [Testing strategy](docs/testing.md)
 - [Input formats and their sources](docs/formats.md)
-- [Code walk-through for reviewers](docs/code_walkthrough.md)
-- [Runbook for failed HPC jobs](docs/operations/runbook.md) and [postmortems](docs/operations/)
+- [Postmortems](docs/operations/): Snakemake on macOS, ClinVar subsamples without contig lines
 - [Data sources](docs/data_sources.md), [roadmap](ROADMAP.md), [changelog](CHANGELOG.md)
 
 ## Development
