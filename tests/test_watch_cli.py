@@ -119,6 +119,27 @@ def test_cli_calibrate(tmp_path: Path) -> None:
     assert (out / "pipeprof.log.jsonl").exists()
     bad = runner.invoke(app, ["calibrate", str(vcf), "--outdir", str(out), "--", "false"])
     assert bad.exit_code == 2
+    # Succeeds on every subsample, fails on the full 3000 records.
+    full_fails = runner.invoke(
+        app,
+        [
+            "calibrate",
+            str(vcf),
+            "--outdir",
+            str(tmp_path / "cal_fail"),
+            "--fractions",
+            "0.1,0.2,0.4",
+            "--validate-full",
+            "--shell",
+            "--",
+            "test $(grep -vc '^#' {input}) -lt 2000",
+        ],
+    )
+    assert full_fails.exit_code == 1, full_fails.output
+    assert "full run failed with status 1" in full_fails.output
+    saved = json.loads((tmp_path / "cal_fail" / "calibration.json").read_text())
+    assert saved["validation"]["metrics"] == {}
+    assert saved["validation"]["plan_covers_actual"] is None
     worse = runner.invoke(
         app, ["calibrate", str(vcf), "--outdir", str(out), "--fractions", "a,b", "--", "true"]
     )

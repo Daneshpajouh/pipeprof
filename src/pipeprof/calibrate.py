@@ -706,25 +706,35 @@ def calibrate(
                 output_suffix=output_suffix,
             )
             validation = {"measurement": m.to_dict(), "returncode": m.returncode, "metrics": {}}
-            for metric, pred in predictions.items():
-                actual = m.cpu_s if metric == "cpu_s" else float(getattr(m, metric))
-                validation["metrics"][metric] = {
-                    "predicted": pred.point,
-                    "lower": pred.lower,
-                    "upper": pred.upper,
-                    "actual": actual,
-                    "ratio_predicted_to_actual": pred.point / actual if actual > 0 else None,
-                    "inside_interval": (
-                        None
-                        if pred.lower is None or pred.upper is None
-                        else pred.lower <= actual <= pred.upper
-                    ),
+            if m.returncode != 0:
+                # A run that crashed part way used less than a full run would,
+                # so comparing it with the prediction would check nothing.
+                validation["plan_covers_actual"] = None
+                info.update(returncode=m.returncode)
+                log.warning(
+                    f"full run failed with status {m.returncode}; prediction not checked",
+                    returncode=m.returncode,
+                )
+            else:
+                for metric, pred in predictions.items():
+                    actual = m.cpu_s if metric == "cpu_s" else float(getattr(m, metric))
+                    validation["metrics"][metric] = {
+                        "predicted": pred.point,
+                        "lower": pred.lower,
+                        "upper": pred.upper,
+                        "actual": actual,
+                        "ratio_predicted_to_actual": pred.point / actual if actual > 0 else None,
+                        "inside_interval": (
+                            None
+                            if pred.lower is None or pred.upper is None
+                            else pred.lower <= actual <= pred.upper
+                        ),
+                    }
+                validation["plan_covers_actual"] = {
+                    "memory": plan.mem_bytes >= m.peak_rss_bytes,
+                    "time": plan.time_s >= m.wall_s,
                 }
-            validation["plan_covers_actual"] = {
-                "memory": plan.mem_bytes >= m.peak_rss_bytes,
-                "time": plan.time_s >= m.wall_s,
-            }
-            info.update(validation["plan_covers_actual"])
+                info.update(validation["plan_covers_actual"])
 
     prov = capture(inputs=[source], tools=_tools_in(template)).to_dict()
     prov["input"] = {"path": str(source), "size_bytes": full.size_bytes, "records": full.records}

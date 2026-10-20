@@ -187,6 +187,12 @@ def calibrate_cmd(
                 + ("no interval" if v["inside_interval"] is None else str(v["inside_interval"]))
             )
     out.print(f"Wrote {paths['json']} and snippets in {outdir}")
+    if result.validation and result.validation["returncode"] != 0:
+        out.print(
+            f"[red]full run failed with status {result.validation['returncode']}; "
+            "the prediction was not checked[/red]"
+        )
+        raise typer.Exit(1)
 
 
 @app.command("watch")

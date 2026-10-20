@@ -42,7 +42,7 @@ Main options:
 | `--shell` | off | run COMMAND through `/bin/sh -c`, for pipes |
 | `--x` | `bytes` | size measure: file bytes or `records` |
 | `--mem-headroom`, `--time-headroom` | 1.2, 1.5 | factors on the 95% upper bound |
-| `--validate-full` | off | also run the full input and compare |
+| `--validate-full` | off | also run the full input and compare; exits 1 if that run fails |
 | `--job-name`, `--partition`, `--account` | | used in the snippets |
 
 Subsamples are nested: every record of the 1 percent file is also in the
